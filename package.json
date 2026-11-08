@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node dev-server.mjs",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "rm -rf .next && NODE_ENV=production next build",
     "start": "next start -H 0.0.0.0 -p 3000",
     "clean": "rm -rf .next dist",
@@ -37,12 +37,19 @@
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.6.2",
     "bcryptjs": "^2.4.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "next": "^15.5.29",
     "postcss": "^8.5.32",
     "prisma": "^6.19.3",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.19.3": true,
+    "protobufjs": true
   }
 }

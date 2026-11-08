@@ -185,19 +185,71 @@ ALTER TABLE "role_permissions"
 -- ------------------------------------------------------------------------------
 -- 4. RESTORE MISSING FOUNDATION GOVERNANCE COLUMNS
 -- ------------------------------------------------------------------------------
+-- ------------------------------------------------------------------------------
+-- 4. RESTORE AND CONVERT FOUNDATION GOVERNANCE COLUMNS
+-- ------------------------------------------------------------------------------
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branches' AND column_name = 'managerUserId') THEN
+    -- branches.managerUserId
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'branches'
+          AND column_name = 'managerUserId'
+    ) THEN
         ALTER TABLE "branches" ADD COLUMN "managerUserId" UUID;
+    ELSIF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'branches'
+          AND column_name = 'managerUserId'
+          AND udt_name = 'text'
+    ) THEN
+        ALTER TABLE "branches"
+            ALTER COLUMN "managerUserId"
+            TYPE UUID USING NULLIF("managerUserId", '')::UUID;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'branches' AND column_name = 'alternateApproverId') THEN
+
+    -- branches.alternateApproverId
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'branches'
+          AND column_name = 'alternateApproverId'
+    ) THEN
         ALTER TABLE "branches" ADD COLUMN "alternateApproverId" UUID;
+    ELSIF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'branches'
+          AND column_name = 'alternateApproverId'
+          AND udt_name = 'text'
+    ) THEN
+        ALTER TABLE "branches"
+            ALTER COLUMN "alternateApproverId"
+            TYPE UUID USING NULLIF("alternateApproverId", '')::UUID;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'departments' AND column_name = 'headUserId') THEN
+
+    -- departments.headUserId
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'departments'
+          AND column_name = 'headUserId'
+    ) THEN
         ALTER TABLE "departments" ADD COLUMN "headUserId" UUID;
+    ELSIF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'departments'
+          AND column_name = 'headUserId'
+          AND udt_name = 'text'
+    ) THEN
+        ALTER TABLE "departments"
+            ALTER COLUMN "headUserId"
+            TYPE UUID USING NULLIF("headUserId", '')::UUID;
     END IF;
 END $$;
-
 -- ------------------------------------------------------------------------------
 -- 5. RE-ESTABLISH FOUNDATION FOREIGN KEY CONSTRAINTS WITH MATCHING UUID TYPES
 -- ------------------------------------------------------------------------------
