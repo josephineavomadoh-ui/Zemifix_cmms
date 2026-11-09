@@ -58,7 +58,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobile }) => {
         </button>
 
         {/* Global Search Bar */}
-        <div className="relative hidden sm:block w-64 md:w-80">
+        <div className="relative hidden sm:block w-48 md:w-56 lg:w-64 xl:w-80">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -83,7 +83,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobile }) => {
           >
             <Building className="h-3.5 w-3.5 text-[#0B1336]" />
             <span className="hidden md:inline text-slate-500">Branch:</span>
-            <span className="max-w-[120px] md:max-w-[160px] truncate text-[#0B1336] font-semibold">
+            <span className="block max-w-[90px] sm:max-w-[120px] md:max-w-[160px] truncate text-[#0B1336] font-semibold">
               {selectedBranch}
             </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -131,7 +131,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobile }) => {
         {/* Dual-Control Approval Trigger */}
         <div
           title="Dual-Control Approval Queue"
-          className="relative flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700"
+          className="relative hidden h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 xl:flex"
         >
           <ShieldCheck className="h-4 w-4 text-[#FF5B00]" />
           <span className="hidden sm:inline">Dual-Control</span>
