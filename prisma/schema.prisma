@@ -1,0 +1,375 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------
+// Enums based on ZemiFix Specification Section 4.2
+// ----------------------------------------------------
+
+enum BranchType {
+  HeadOffice
+  Region
+  Branch
+  Outlet
+}
+
+enum AccessScope {
+  Own
+  Department
+  Branch
+  BranchAndBelow
+  Company
+}
+
+// ====================================================
+// DOMAIN 01: IDENTITY, ORGANIZATION & ACCESS CONTROL
+// STAGE 1: FOUNDATION EXTENSION & IDENTITY REALMS
+// ====================================================
+
+// 1. Company (Singleton Enterprise Deployment)
+model Company {
+  id                      String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name                    String   @db.VarChar(150)
+  legalName               String   @db.VarChar(200)
+  logo                    String?  @db.Text
+  baseCurrency            String   @default("GHS") @db.Char(3)
+  timezone                String   @default("UTC") @db.VarChar(50)
+  locale                  String   @default("en-GH") @db.VarChar(20)
+  dateFormat              String   @default("YYYY-MM-DD") @db.VarChar(20)
+  taxScheme               String   @default("STANDARD") @db.VarChar(50)
+  fiscalYearStart         Int      @default(1) @db.SmallInt // Month: 1 = January
+  modes                   Json     @default("{\"facility\":true,\"contractor\":true}")
+  numberPrefixes          Json     @default("{\"workOrder\":\"WO-\",\"invoice\":\"INV-\",\"quote\":\"QT-\",\"asset\":\"AST-\",\"request\":\"REQ-\"}")
+  businessHoursCalendarId String?  @db.Uuid
+  otpChannel              String   @default("Email") @db.VarChar(20) // Email | SMS
+  sessionPolicy           Json     @default("{\"maxLifetimeHours\":8,\"idleTimeoutMinutes\":120}")
+  createdAt               DateTime @default(now()) @db.Timestamptz
+  updatedAt               DateTime @updatedAt @db.Timestamptz
+  version                 Int      @default(1)
+
+  @@map("companies")
+}
+
+// 2. Branch Hierarchy
+model Branch {
+  id                  String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  parentId            String?    @db.Uuid
+  parent              Branch?    @relation("BranchHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children            Branch[]   @relation("BranchHierarchy")
+  name                String     @db.VarChar(100)
+  code                String     @unique @db.VarChar(20)
+  type                BranchType @default(Branch)
+  address             String?    @db.Text
+  phone               String?    @db.VarChar(50)
+  managerUserId       String?    @db.Uuid
+  managerUser         User?      @relation("BranchManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  alternateApproverId String?    @db.Uuid
+  alternateApprover   User?      @relation("BranchAlternateApprover", fields: [alternateApproverId], references: [id], onDelete: SetNull)
+  invoicePrefix       String?    @db.VarChar(10)
+  isActive            Boolean    @default(true)
+  path                String     @default("/") @db.Text // Materialized path (e.g. /1/4/9/) for fast "branch and below" queries
+  createdAt           DateTime   @default(now()) @db.Timestamptz
+  updatedAt           DateTime   @updatedAt @db.Timestamptz
+  deletedAt           DateTime?  @db.Timestamptz
+  version             Int        @default(1)
+
+  users       User[]
+  scopeGrants UserScopeGrant[]
+  apiKeys     ApiKey[]
+
+  @@index([parentId])
+  @@index([path])
+  @@map("branches")
+}
+
+// 3. Department Hierarchy
+model Department {
+  id         String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  parentId   String?      @db.Uuid
+  parent     Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children   Department[] @relation("DepartmentHierarchy")
+  name       String       @db.VarChar(100)
+  code       String       @unique @db.VarChar(20)
+  headUserId String?      @db.Uuid
+  headUser   User?        @relation("DepartmentHead", fields: [headUserId], references: [id], onDelete: SetNull)
+  isActive   Boolean      @default(true)
+  path       String       @default("/") @db.Text
+  createdAt  DateTime     @default(now()) @db.Timestamptz
+  updatedAt  DateTime     @updatedAt @db.Timestamptz
+  deletedAt  DateTime?    @db.Timestamptz
+  version    Int          @default(1)
+
+  users       User[]
+  scopeGrants UserScopeGrant[]
+
+  @@index([parentId])
+  @@index([path])
+  @@map("departments")
+}
+
+// 4. Staff Accounts
+model User {
+  id            String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name          String      @db.VarChar(100)
+  email         String      @unique @db.VarChar(150)
+  phone         String?     @db.VarChar(50)
+  passwordHash  String      @db.VarChar(255)
+  roleId        String      @db.Uuid
+  role          Role        @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  branchId      String      @db.Uuid
+  branch        Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId  String?     @db.Uuid
+  department    Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  accessScope   AccessScope @default(Department)
+  teamIds       String[]    @default([])
+  approvalLimit Decimal?    @db.Decimal(14, 2)
+  isActive      Boolean     @default(true)
+  locale        String      @default("en-GH") @db.VarChar(20)
+  lastLoginAt   DateTime?   @db.Timestamptz
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @db.Timestamptz
+  deletedAt     DateTime?   @db.Timestamptz
+  version       Int         @default(1)
+
+  scopeGrants               UserScopeGrant[]
+  grantedScopes             UserScopeGrant[] @relation("ScopeGranter")
+  otps                      AuthOtp[]
+  managedBranches           Branch[]         @relation("BranchManager")
+  alternateApprovedBranches Branch[]         @relation("BranchAlternateApprover")
+  headedDepartments         Department[]     @relation("DepartmentHead")
+
+  @@index([branchId])
+  @@index([departmentId])
+  @@index([roleId])
+  @@map("users")
+}
+
+// 5. RBAC Roles
+model Role {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  isSystem    Boolean  @default(false)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  users       User[]
+  permissions RolePermission[]
+  apiKeys     ApiKey[]
+
+  @@map("roles")
+}
+
+// 6. RBAC Permissions
+model Permission {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  resource    String   @db.VarChar(50) // e.g. "work_order", "invoice", "user", "asset"
+  action      String   @db.VarChar(50) // distinct maker and checker: "create", "approve", "read", "update"
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  roles RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+// 7. Role-Permission Junction
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ====================================================
+// NEW STAGE 1 MODELS (8 MODELS)
+// ====================================================
+
+// 8. Granular Staff Scope Overrides
+model UserScopeGrant {
+  id              String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId          String      @db.Uuid
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId        String?     @db.Uuid
+  branch          Branch?     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  departmentId    String?     @db.Uuid
+  department      Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  grantedByUserId String      @db.Uuid
+  grantedByUser   User        @relation("ScopeGranter", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  expiresAt       DateTime?   @db.Timestamptz
+  createdAt       DateTime    @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([branchId])
+  @@index([departmentId])
+  @@map("user_scope_grants")
+}
+
+// 9. Minimal Customer Root Account (Contractor Mode Foundation)
+model Customer {
+  id               String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  customerNumber   String    @unique @db.VarChar(50)
+  name             String    @db.VarChar(150)
+  taxId            String?   @db.VarChar(50) // GRA TIN in Ghana
+  billingAddress   String    @db.Text
+  primaryPhone     String    @db.VarChar(50)
+  primaryEmail     String    @db.VarChar(100)
+  paymentTermsDays Int       @default(30) @db.SmallInt
+  creditLimit      Decimal   @default(0.00) @db.Decimal(14, 2)
+  currentBalance   Decimal   @default(0.00) @db.Decimal(14, 2)
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @db.Timestamptz
+  deletedAt        DateTime? @db.Timestamptz
+  version          Int       @default(1)
+
+  sites      CustomerSite[]
+  contacts   CustomerContact[]
+  siteGrants CustomerContactSiteGrant[]
+
+  @@index([customerNumber])
+  @@index([isActive])
+  @@map("customers")
+}
+
+// 10. Minimal Customer Physical Properties (Contractor Mode Foundation)
+model CustomerSite {
+  id                  String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  customerId          String    @db.Uuid
+  customer            Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  siteCode            String    @db.VarChar(50)
+  name                String    @db.VarChar(150)
+  address             String    @db.Text
+  primaryContactName  String?   @db.VarChar(100)
+  primaryContactPhone String?   @db.VarChar(50)
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
+  deletedAt           DateTime? @db.Timestamptz
+
+  contactGrants CustomerContactSiteGrant[]
+
+  @@unique([customerId, siteCode])
+  @@unique([id, customerId]) // Compound unique key enabling relational Customer Site Grant Isolation
+  @@index([customerId])
+  @@map("customer_sites")
+}
+
+// 11. Customer Portal User Identity (Strictly Isolated from Internal Staff)
+model CustomerContact {
+  id                  String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  customerId          String    @db.Uuid
+  customer            Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name                String    @db.VarChar(100)
+  email               String    @unique @db.VarChar(150)
+  phone               String?   @db.VarChar(50)
+  passwordHash        String    @db.VarChar(255)
+  isPrimaryContact    Boolean   @default(false)
+  canViewFinancials   Boolean   @default(false)
+  canApproveQuotes    Boolean   @default(false)
+  canRequestWork      Boolean   @default(true)
+  isActive            Boolean   @default(true)
+  lastLoginAt         DateTime? @db.Timestamptz
+  failedLoginAttempts Int       @default(0) @db.SmallInt
+  lockedUntil         DateTime? @db.Timestamptz
+  createdAt           DateTime  @default(now()) @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @db.Timestamptz
+  deletedAt           DateTime? @db.Timestamptz
+  version             Int       @default(1)
+
+  siteGrants     CustomerContactSiteGrant[]
+  portalSessions PortalSession[]
+  otps           AuthOtp[]
+
+  @@unique([id, customerId]) // Compound unique key enabling relational Customer Site Grant Isolation
+  @@index([customerId])
+  @@index([email])
+  @@map("customer_contacts")
+}
+
+// 12. Relational Customer Portal Site Grants with Database-Level Customer Isolation
+model CustomerContactSiteGrant {
+  id                String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  customerId        String          @db.Uuid
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerContactId String          @db.Uuid
+  customerContact   CustomerContact @relation(fields: [customerContactId, customerId], references: [id, customerId], onDelete: Cascade)
+  customerSiteId    String          @db.Uuid
+  customerSite      CustomerSite    @relation(fields: [customerSiteId, customerId], references: [id, customerId], onDelete: Cascade)
+  createdAt         DateTime        @default(now()) @db.Timestamptz
+
+  @@unique([customerContactId, customerSiteId])
+  @@index([customerId])
+  @@index([customerContactId])
+  @@index([customerSiteId])
+  @@map("customer_contact_site_grants")
+}
+
+// 13. Customer Portal Bearer Sessions
+model PortalSession {
+  id                String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  customerContactId String          @db.Uuid
+  customerContact   CustomerContact @relation(fields: [customerContactId], references: [id], onDelete: Cascade)
+  tokenHash         String          @unique @db.VarChar(128)
+  ipAddress         String?         @db.VarChar(45)
+  userAgent         String?         @db.Text
+  expiresAt         DateTime        @db.Timestamptz
+  revokedAt         DateTime?       @db.Timestamptz
+  createdAt         DateTime        @default(now()) @db.Timestamptz
+
+  @@index([customerContactId])
+  @@index([tokenHash])
+  @@map("portal_sessions")
+}
+
+// 14. MFA, Password Reset & Dual-Control Step-Up OTPs
+model AuthOtp {
+  id                String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId            String?          @db.Uuid
+  user              User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerContactId String?          @db.Uuid
+  customerContact   CustomerContact? @relation(fields: [customerContactId], references: [id], onDelete: Cascade)
+  otpCodeHash       String           @db.VarChar(128)
+  purpose           String           @db.VarChar(30) // LOGIN_MFA | STEP_UP_APPROVAL | PASSWORD_RESET | PHONE_VERIFY
+  destination       String           @db.VarChar(150)
+  channel           String           @db.VarChar(20) // EMAIL | SMS | WHATSAPP
+  expiresAt         DateTime         @db.Timestamptz
+  consumedAt        DateTime?        @db.Timestamptz
+  attemptCount      Int              @default(0) @db.SmallInt
+  createdAt         DateTime         @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([customerContactId])
+  @@index([purpose, destination])
+  @@map("auth_otps")
+}
+
+// 15. Integration API Keys (Machine Identity)
+model ApiKey {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  name       String    @db.VarChar(100)
+  keyPrefix  String    @unique @db.VarChar(16)
+  keyHash    String    @db.VarChar(128)
+  branchId   String    @db.Uuid
+  branch     Branch    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  roleId     String    @db.Uuid
+  role       Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  allowedIps String[]  @default([])
+  expiresAt  DateTime? @db.Timestamptz
+  revokedAt  DateTime? @db.Timestamptz
+  lastUsedAt DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  @@index([branchId])
+  @@index([roleId])
+  @@map("api_keys")
+}
