@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Clock, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import { NotificationHub } from '@/src/components/notifications/NotificationHub';
+import { StatusBadge } from '@/src/components/ui/StatusBadge';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function CustomerPortalWorkOrdersPage() {
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -17,61 +20,76 @@ export default function CustomerPortalWorkOrdersPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/portal/dashboard" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Portal Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Clock className="w-6 h-6 text-brand-orange" /> Work Order Live Tracking
-          </h1>
-        </div>
-        <NotificationHub realm="portal" dark />
-      </div>
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading field work orders...</div>
-        ) : workOrders.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No active work orders found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">WO Number</th>
-                  <th className="p-3.5">Site / Facility</th>
-                  <th className="p-3.5">Title & Description</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Customer Comments</th>
-                  <th className="p-3.5">Customer Attachments</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {workOrders.map((wo) => (
-                  <tr key={wo.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-medium text-brand-orange">{wo.workOrderNumber}</td>
-                    <td className="p-3.5 font-medium text-white">{wo.site?.name}</td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-white">{wo.title}</div>
-                      <div className="text-slate-400">{wo.description}</div>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-800 text-slate-300">
-                        {wo.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 font-mono text-slate-300">{wo.comments?.length ?? 0} comments</td>
-                    <td className="p-3.5 font-mono text-slate-300">{wo.attachments?.length ?? 0} files</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  return (
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Portal topbar */}
+      <header className="border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/portal/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#080E29] transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Portal Dashboard
+          </Link>
+          <div className="h-4 w-px bg-slate-200" />
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-[#FF5B00]" />
+            <h1 className="text-base font-semibold text-[#080E29]">Work Order Live Tracking</h1>
           </div>
-        )}
-      </div>
+        </div>
+        <NotificationHub realm="portal" dark={false} />
+      </header>
+
+      {/* Content */}
+      <main className="max-w-7xl mx-auto p-6">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+          {loading ? (
+            <LoadingSkeleton rows={6} columns={6} />
+          ) : workOrders.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title="No active work orders"
+              description="There are no work orders currently associated with your sites."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="border-b border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className={thClass}>WO Number</th>
+                    <th className={thClass}>Site / Facility</th>
+                    <th className={thClass}>Title & Description</th>
+                    <th className={thClass}>Status</th>
+                    <th className={thClass}>Comments</th>
+                    <th className={thClass}>Attachments</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {workOrders.map((wo) => (
+                    <tr key={wo.id} className="hover:bg-slate-50 transition-colors">
+                      <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>{wo.workOrderNumber}</td>
+                      <td className={`${tdClass} font-medium text-slate-800`}>{wo.site?.name}</td>
+                      <td className={tdClass}>
+                        <div className="font-semibold text-slate-800">{wo.title}</div>
+                        <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{wo.description}</div>
+                      </td>
+                      <td className={tdClass}>
+                        <StatusBadge status={wo.status} />
+                      </td>
+                      <td className={`${tdClass} font-mono text-slate-600`}>{wo.comments?.length ?? 0} comments</td>
+                      <td className={`${tdClass} font-mono text-slate-600`}>{wo.attachments?.length ?? 0} files</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
