@@ -20,13 +20,14 @@ interface DataTableProps<T> {
   loading?: boolean;
   loadingRows?: number;
   empty?: React.ReactNode;
+  emptyMessage?: string;
   /** Sticky column header on scroll within a panel. */
   stickyHeader?: boolean;
 }
 
 /**
- * Generic data table used across all modules. Renders loading skeletons,
- * an empty slot, hover states and optional row click (e.g. open a drawer).
+ * Generic data table used across all modules.
+ * Renders loading skeleton rows, an empty slot, hover states, and optional row click.
  */
 export function DataTable<T>({
   columns,
@@ -36,6 +37,7 @@ export function DataTable<T>({
   loading = false,
   loadingRows = 6,
   empty,
+  emptyMessage,
   stickyHeader = false,
 }: DataTableProps<T>) {
   const alignClass = (align?: 'left' | 'right' | 'center') =>
@@ -61,35 +63,43 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
+          {/* Loading skeleton rows */}
           {loading &&
             Array.from({ length: loadingRows }).map((_, i) => (
-              <tr key={`sk-${i}`}>
+              <tr key={`sk-${i}`} className={i % 2 === 1 ? 'bg-slate-50/40' : ''}>
                 {columns.map((col) => (
                   <td key={col.key} className="px-4 py-3.5">
-                    <div className="h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+                    <div
+                      className="h-3 animate-pulse rounded bg-slate-100"
+                      style={{ width: `${55 + ((i + columns.indexOf(col)) % 3) * 15}%` }}
+                    />
                   </td>
                 ))}
               </tr>
             ))}
 
+          {/* Empty state */}
           {!loading && data.length === 0 && (
             <tr>
               <td colSpan={columns.length} className="px-4 py-2">
                 {empty ?? (
-                  <p className="py-8 text-center text-xs text-slate-400">No records to display.</p>
+                  <p className="py-8 text-center text-xs text-slate-400">
+                    {emptyMessage ?? 'No records to display.'}
+                  </p>
                 )}
               </td>
             </tr>
           )}
 
+          {/* Data rows */}
           {!loading &&
-            data.map((row) => (
+            data.map((row, ri) => (
               <tr
                 key={rowKey(row)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={`border-b border-slate-50 transition-colors ${
-                  onRowClick ? 'cursor-pointer hover:bg-slate-50' : 'hover:bg-slate-50/60'
-                }`}
+                  ri % 2 === 1 ? 'bg-slate-50/30' : ''
+                } ${onRowClick ? 'cursor-pointer hover:bg-slate-50' : 'hover:bg-slate-50/60'}`}
               >
                 {columns.map((col) => (
                   <td
@@ -107,7 +117,7 @@ export function DataTable<T>({
   );
 }
 
-/** Convenience type for a "no records" empty cell referencing an icon. */
+/** Convenience "no records" empty cell referencing an icon. */
 export function TableEmpty({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
