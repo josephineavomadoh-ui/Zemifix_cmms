@@ -1,0 +1,21 @@
+{
+  "name": "ZemiFix CMMS Technician PWA",
+  "short_name": "ZemiFix PWA",
+  "description": "Offline-capable commercial CMMS field technician mobile workspace",
+  "start_url": "/pwa",
+  "display": "standalone",
+  "background_color": "#0B1336",
+  "theme_color": "#0B1336",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

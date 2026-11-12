@@ -19,7 +19,6 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -44,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Work Orders', href: '/work-orders', icon: ClipboardList, badge: '42' },
         { name: 'Requests', href: '/requests', icon: MessageSquareWarning, badge: '11' },
-        { name: 'Assets & Equipment', href: '/assets', icon: Wrench },
+        { name: 'Assets & Equipment', href: '/dashboard/assets', icon: Wrench },
         { name: 'Preventive Maint.', href: '/preventive', icon: CalendarCheck2, alertBadge: '3' },
       ],
     },
@@ -84,14 +83,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-[#16204E]">
+        <div className="flex h-14 shrink-0 items-center justify-between px-3.5 border-b border-[#16204E]">
           {collapsed ? (
             <div className="mx-auto">
-              <Logo variant="icon" width={36} height={36} />
+              <Logo variant="icon" width={32} height={32} />
             </div>
           ) : (
-            <div className="flex items-center gap-2 pl-1">
-              <Logo variant="dark" width={140} height={38} />
+            <div className="flex items-center gap-2 pl-0.5">
+              <Logo variant="dark" width={130} height={34} />
             </div>
           )}
 
@@ -99,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onToggleCollapse}
             aria-label="Toggle sidebar"
-            className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-[#16204E] hover:text-white transition-colors"
+            className="hidden lg:flex h-6.5 w-6.5 items-center justify-center rounded-md text-slate-400 hover:bg-[#16204E] hover:text-white transition-colors cursor-pointer"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
@@ -107,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Operating Modes Badge */}
         {!collapsed && (
-          <div className="px-4 py-2.5 mx-3 mt-3 rounded-lg bg-[#070D26] border border-[#16204E] flex items-center justify-between text-xs">
+          <div className="shrink-0 px-3 py-1.5 mx-2.5 mt-2 rounded-lg bg-[#070D26] border border-[#16204E] flex items-center justify-between text-[11px]">
             <span className="text-slate-400 font-medium">Mode:</span>
             <span className="font-semibold text-emerald-400 flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -117,11 +116,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Navigation Links */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-3 scrollbar-thin scrollbar-thumb-slate-700/50">
           {navigationGroups.map((grp) => (
-            <div key={grp.group} className="space-y-1">
+            <div key={grp.group} className="space-y-0.5">
               {!collapsed && (
-                <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="px-2.5 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {grp.group}
                 </div>
               )}
@@ -138,25 +137,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     href={item.href}
                     onClick={onCloseMobile}
                     title={collapsed ? item.name : undefined}
-                    className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
+                    className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
                       isActive
-                        ? 'bg-[#FF5B00] text-white font-semibold shadow-sm shadow-[#FF5B00]/30'
+                        ? 'bg-[#FF5B00] text-white font-semibold shadow-xs shadow-[#FF5B00]/30'
                         : 'text-slate-300 hover:bg-[#16204E] hover:text-white'
                     }`}
                   >
                     <Icon
-                      className={`h-4.5 w-4.5 shrink-0 ${
+                      className={`h-4 w-4 shrink-0 ${
                         isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
                       }`}
                     />
 
                     {!collapsed && (
-                      <span className="flex-1 truncate">{item.name}</span>
+                      <span className="flex-1 truncate leading-tight">{item.name}</span>
                     )}
 
                     {!collapsed && item.badge && (
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
                           isActive
                             ? 'bg-white/20 text-white'
                             : 'bg-[#16204E] text-slate-300'
@@ -167,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     )}
 
                     {!collapsed && item.alertBadge && (
-                      <span className="rounded-full bg-rose-500/90 text-white px-2 py-0.5 text-[10px] font-bold">
+                      <span className="rounded-full bg-rose-500/90 text-white px-1.5 py-0.2 text-[10px] font-bold">
                         {item.alertBadge}
                       </span>
                     )}
@@ -180,19 +179,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer Quick Info */}
         {!collapsed ? (
-          <div className="p-3 border-t border-[#16204E] bg-[#070D26]/80 text-[11px] text-slate-400">
+          <div className="shrink-0 p-2.5 border-t border-[#16204E] bg-[#070D26]/80 text-[11px] text-slate-400">
             <div className="flex items-center justify-between">
               <span className="font-medium text-slate-300">ZemiFix CMMS</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-[#16204E] rounded text-[#FF5B00] font-mono">
+              <span className="text-[10px] px-1.5 py-0.2 bg-[#16204E] rounded text-[#FF5B00] font-mono">
                 v1.0-RC
               </span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-500 truncate">
+            <p className="mt-0.5 text-[10px] text-slate-500 truncate">
               Single-Company Enterprise Deployment
             </p>
           </div>
         ) : (
-          <div className="p-2 border-t border-[#16204E] text-center">
+          <div className="shrink-0 p-2 border-t border-[#16204E] text-center">
             <span className="text-[10px] font-mono text-[#FF5B00]">v1.0</span>
           </div>
         )}

@@ -1,0 +1,57 @@
+-- =============================================================================
+-- ZemiFix CMMS — Migration: Stage 2 OTP User Partial Index
+-- Name: 20261109000002_stage2_otp_user_index
+-- Engine: PostgreSQL 18
+-- Prisma: 6.19.3
+--
+-- Creates one composite partial index on auth_otps for staff user rows:
+--
+--   auth_otps_user_active_idx
+--   ON "auth_otps" ("userId", "purpose", "consumedAt", "invalidatedAt")
+--   WHERE "userId" IS NOT NULL
+--
+-- Why a separate migration file:
+--   CREATE INDEX CONCURRENTLY cannot run inside any transaction block,
+--   including the implicit transaction that prisma migrate deploy wraps
+--   around each migration file. A file containing only a bare
+--   CREATE INDEX CONCURRENTLY (no BEGIN/COMMIT) executes outside any
+--   explicit transaction and is accepted by PostgreSQL.
+--
+-- Why CONCURRENTLY:
+--   Builds the index without holding an ACCESS EXCLUSIVE lock. The table
+--   remains readable and writable throughout the build. Without CONCURRENTLY,
+--   the build holds an exclusive lock that blocks all DML for its duration.
+--
+-- Why partial (WHERE "userId" IS NOT NULL):
+--   auth_otps rows belong to either a staff user (userId set) or a customer
+--   contact (customerContactId set) — never both. The partial predicate
+--   restricts this index to staff rows only, keeping it roughly half the size
+--   of a full index and exactly matching the OTP service lookup pattern.
+--
+-- Safety:
+--   IF NOT EXISTS — if the index was already created by a previous partial
+--   run, this statement is a no-op. No rows are modified.
+--
+-- Failure and recovery:
+--   If this build is interrupted, PostgreSQL marks the index INVALID
+--   (pg_index.indisvalid = false). IF NOT EXISTS will then silently skip a
+--   re-run, leaving the broken index in place. Before retrying:
+--     1. Confirm the index is invalid:
+--          SELECT c.relname, i.indisvalid
+--          FROM pg_index i
+--          JOIN pg_class c ON c.oid = i.indexrelid
+--          JOIN pg_class t ON t.oid = i.indrelid
+--          WHERE t.relname = 'auth_otps'
+--            AND c.relname = 'auth_otps_user_active_idx';
+--     2. Drop it only if indisvalid = false:
+--          DROP INDEX CONCURRENTLY IF EXISTS "auth_otps_user_active_idx";
+--     3. Resolve the failed migration record:
+--          npx prisma migrate resolve --rolled-back \
+--            20261109000002_stage2_otp_user_index
+--     4. Reapply:
+--          npx prisma migrate deploy
+-- =============================================================================
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "auth_otps_user_active_idx"
+  ON "auth_otps" ("userId", "purpose", "consumedAt", "invalidatedAt")
+  WHERE "userId" IS NOT NULL;

@@ -1,32 +1,26 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/src/lib/auth';
-import { handleApiError, isDemoModeEnabled } from '@/src/lib/db-errors';
-import { getUserByEmail } from '@/src/lib/services/userService';
+import { handleApiError, isDemoModeEnabled, isDatabaseConfigured } from '@/src/lib/db-errors';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(req);
     if (user) {
       return NextResponse.json({ authenticated: true, user, isDemoMode: false });
     }
 
-    // In explicit demo mode only, if configured, provide demo admin session
-    if (isDemoModeEnabled()) {
-      const demoRes = await getUserByEmail('admin@zemifix.local');
-      if (demoRes.data) {
-        const { passwordHash: _, ...safeUser } = demoRes.data;
-        return NextResponse.json({
-          authenticated: true,
-          user: safeUser,
-          isDemoMode: true,
-        });
-      }
+    // Demo mode is only valid when no real database is configured.
+    // getCurrentUser() already returns the demo identity in this case, so
+    // reaching here with demo mode active means there is no valid session cookie.
+    if (!isDatabaseConfigured() && isDemoModeEnabled()) {
+      // No active session — return unauthenticated rather than auto-granting access
+      return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
     }
 
     return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const { status, body } = handleApiError(error);
     return NextResponse.json(body, { status });
   }

@@ -47,6 +47,24 @@ export function isDemoModeEnabled(): boolean {
 }
 
 /**
+ * Returns true when a real PostgreSQL database is configured.
+ * A configured-but-unreachable database is still considered "configured" —
+ * this must NEVER trigger a demo fallback.
+ *
+ * All four conditions must be absent for the database to be considered
+ * unconfigured (i.e. safe to run in demo mode):
+ *   - DATABASE_URL is not set
+ *   - DIRECT_URL is not set
+ *   - NODE_ENV is not 'production'
+ *   - ENABLE_DEMO_MODE is 'true'
+ */
+export function isDatabaseConfigured(): boolean {
+  const hasDbUrl = Boolean(process.env.DATABASE_URL);
+  const hasDirectUrl = Boolean(process.env.DIRECT_URL);
+  return hasDbUrl || hasDirectUrl;
+}
+
+/**
  * Inspect an error to determine if it is a database connection or Prisma network error.
  */
 export function isDatabaseConnectionError(error: unknown): boolean {

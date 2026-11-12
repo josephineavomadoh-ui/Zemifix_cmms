@@ -1,112 +1,164 @@
 'use client';
 
-import React, { useState } from 'react';
-import { BarChart3, Download, Filter, FileBarChart, ArrowRight, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BarChart3, Download, Filter, FileBarChart, ArrowRight, Calendar, ChevronLeft, ChevronRight, X, Loader2 } from 'lucide-react';
 import { demoPMPlans } from '@/src/lib/demo/preventive';
-import { mockTrends, mockWorkOrders } from '@/src/lib/mockData';
-import { formatGhs } from '@/src/lib/demo/common';
+import { mockTrends } from '@/src/lib/mockData';
 
 const REPORT_CATALOGUE = [
-  { category: 'Work Order Performance', reports: [
-    { id: 'wo-summary', name: 'Work Order Summary', desc: 'Volume, status and cycle time' },
-    { id: 'wo-sla', name: 'SLA Compliance', desc: '% on-time vs breached by branch' },
-    { id: 'wo-backlog', name: 'Backlog Ageing', desc: 'Open orders by age and priority' },
-    { id: 'wo-cycle', name: 'Average Cycle Time', desc: 'Mean hours open-to-close' },
+  { category: 'Maintenance', reports: [
+    { id: 'work_order_history', name: 'Work Order History', desc: 'Volume, status, actual cost and hours', category: 'maintenance' },
+    { id: 'work_order_completion', name: 'Work Order Completion & Overdue', desc: 'Completed vs overdue analysis', category: 'maintenance' },
+    { id: 'maintenance_costs', name: 'Maintenance Costs', desc: 'Expenditure by branch and work type', category: 'maintenance' },
+    { id: 'pm_compliance', name: 'Preventive Maintenance Compliance', desc: 'Schedules, compliance % and overdue PMs', category: 'maintenance' },
+    { id: 'technician_performance', name: 'Technician Performance', desc: 'WOs assigned, hours and cost recorded', category: 'maintenance' },
+    { id: 'asset_downtime', name: 'Asset Downtime Report', desc: 'Downtime events, duration and reasons', category: 'maintenance' },
   ]},
-  { category: 'Preventive Maintenance', reports: [
-    { id: 'pm-compliance', name: 'PM Compliance', desc: 'Completed vs scheduled by plan' },
-    { id: 'pm-overdue', name: 'Overdue Plans', desc: 'Missed and overdue schedules' },
-    { id: 'pm-forecast', name: 'PM Forecast', desc: 'Upcoming maintenance next 30/60/90 days' },
-  ]},
-  { category: 'Asset & Reliability', reports: [
-    { id: 'ast-availability', name: 'Asset Availability', desc: 'Fleet % operational by category' },
-    { id: 'ast-downtime', name: 'Asset Downtime', desc: 'Hours and cost impact' },
-    { id: 'ast-mttr', name: 'MTTR & MTBF', desc: 'Mean time to repair and between failures' },
-  ]},
-  { category: 'Technician Productivity', reports: [
-    { id: 'tech-util', name: 'Technician Utilization', desc: 'Hours worked vs available capacity' },
-    { id: 'tech-productivity', name: 'Productivity Report', desc: 'WOs completed and avg cycle time' },
-  ]},
-  { category: 'Financial', reports: [
-    { id: 'fin-spend', name: 'Maintenance Spend', desc: 'Labour / parts / contractor split' },
-    { id: 'fin-budget', name: 'Budget Utilization', desc: 'Actual vs budget by branch' },
-    { id: 'fin-wo-cost', name: 'Cost per Work Order', desc: 'Average and total by type' },
+  { category: 'Assets', reports: [
+    { id: 'master_asset_register', name: 'Master Asset Register', desc: 'Complete equipment register and status', category: 'assets' },
+    { id: 'asset_lifecycle', name: 'Asset Lifecycle & Status', desc: 'Installation, warranty and downtime counts', category: 'assets' },
+    { id: 'asset_maintenance_history', name: 'Asset Maintenance History', desc: 'Maintenance records by asset', category: 'assets' },
+    { id: 'asset_utilization', name: 'Asset Utilization (Meters)', desc: 'Meter readings and utilization metrics', category: 'assets' },
   ]},
   { category: 'Inventory', reports: [
-    { id: 'inv-valuation', name: 'Inventory Valuation', desc: 'WAC value by category and warehouse' },
-    { id: 'inv-movement', name: 'Stock Movement', desc: 'Receipts, issues and adjustments' },
-    { id: 'inv-turnover', name: 'Stock Turnover', desc: 'Fast movers vs slow movers' },
+    { id: 'stock_on_hand_valuation', name: 'Stock On Hand Valuation', desc: 'WAC valuation and quantities by store', category: 'inventory' },
+    { id: 'low_stock_reorder', name: 'Low Stock & Reorder Report', desc: 'Items at or below reorder levels', category: 'inventory' },
+    { id: 'stock_transaction_history', name: 'Stock Transaction History', desc: 'Receipts, issues and ledger movements', category: 'inventory' },
+    { id: 'parts_consumption', name: 'Parts Consumption Report', desc: 'Parts issued and cost by item', category: 'inventory' },
+    { id: 'inventory_valuation', name: 'Inventory Valuation Summary', desc: 'Valuation summary aggregated by store', category: 'inventory' },
   ]},
-  { category: 'Procurement & Suppliers', reports: [
-    { id: 'proc-spend', name: 'Supplier Spend', desc: 'Spend by supplier and category' },
-    { id: 'proc-performance', name: 'Supplier Performance', desc: 'On-time delivery and quality' },
+  { category: 'Procurement', reports: [
+    { id: 'purchase_order_history', name: 'Purchase Order History', desc: 'PO spend, status and supplier history', category: 'procurement' },
+    { id: 'outstanding_purchase_orders', name: 'Outstanding Purchase Orders', desc: 'Issued and partially received POs', category: 'procurement' },
+    { id: 'vendor_performance', name: 'Vendor Performance Report', desc: 'Supplier ratings, PO count and spend', category: 'procurement' },
+    { id: 'goods_received', name: 'Goods Received Notes', desc: 'GRN delivery receipts and warehouse store', category: 'procurement' },
   ]},
-  { category: 'SLA & Branch', reports: [
-    { id: 'sla-summary', name: 'SLA Summary', desc: 'Overall and by priority tier' },
-    { id: 'branch-perf', name: 'Branch Performance', desc: 'WOs, PM compliance and spend by branch' },
+  { category: 'Contractor Operations', reports: [
+    { id: 'customer_performance', name: 'Customer Performance', desc: 'Customer work orders, invoices and balances', category: 'contractor' },
+    { id: 'contract_sla_performance', name: 'Contract & SLA Performance', desc: 'Active contracts, value and site coverage', category: 'contractor' },
+    { id: 'billable_work', name: 'Billable Work Orders', desc: 'Customer-linked billable maintenance costs', category: 'contractor' },
+    { id: 'quote_conversion', name: 'Quote Conversion Report', desc: 'Quote status and conversion rate', category: 'contractor' },
+    { id: 'site_maintenance_history', name: 'Customer Site Maintenance History', desc: 'Maintenance history grouped by client site', category: 'contractor' },
+  ]},
+  { category: 'Finance', reports: [
+    { id: 'commercial_invoice_register', name: 'Commercial Invoice Register', desc: 'Invoices, VAT/NHIL/GETFund and balances', category: 'finance' },
+    { id: 'outstanding_receivables', name: 'Outstanding Receivables', desc: 'Unpaid invoices and days overdue', category: 'finance' },
+    { id: 'payment_history', name: 'Payment Allocation History', desc: 'Remittances, allocations and unallocated funds', category: 'finance' },
+    { id: 'credit_note_register', name: 'Credit Note Register', desc: 'Issued credit notes and reasons', category: 'finance' },
+    { id: 'internal_recharge', name: 'Internal Recharge Report', desc: 'Facility mode departmental recharges', category: 'finance' },
   ]},
 ];
 
-const woStatusData = [
-  { label: 'In Progress', value: 21, color: '#FF5B00' },
-  { label: 'Open', value: 14, color: '#0B1336' },
-  { label: 'On Hold', value: 7, color: '#f59e0b' },
-  { label: 'Completed', value: 129, color: '#10b981' },
-];
-
-const techData = [
-  { name: 'Kwesi Mensah', pct: 88 }, { name: 'Samuel Osei', pct: 74 },
-  { name: 'Emmanuel Ansah', pct: 61 }, { name: 'Daniel Adjei', pct: 55 },
-  { name: 'Akosua Boateng', pct: 48 },
-];
-
-const spendTrend = mockTrends.map((m) => ({ label: m.month, value: m.spend }));
-const maxSpend = Math.max(...spendTrend.map((d) => d.value), 1);
-
-const mttrData = [
-  { priority: 'Urgent', mttr: 18, mtbf: 312 }, { priority: 'High', mttr: 42, mtbf: 720 },
-  { priority: 'Medium', mttr: 96, mtbf: 1440 }, { priority: 'Low', mttr: 168, mtbf: 4320 },
-];
+interface ReportDataResponse {
+  success: boolean;
+  reportId: string;
+  title: string;
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  summary?: Record<string, any>;
+  columns: string[];
+  data: (string | number | null)[][];
+  error?: string;
+}
 
 export const ReportsView: React.FC = () => {
-  const [dateFrom, setDateFrom] = useState('2026-11-01');
-  const [dateTo, setDateTo] = useState('2026-11-08');
-  const [branchFilter, setBranchFilter] = useState('All branches');
-  const [activeReport, setActiveReport] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [branchId, setBranchId] = useState('');
 
-  const avgCompliance = Math.round(demoPMPlans.reduce((s, p) => s + p.compliancePercent, 0) / demoPMPlans.length);
-  const donutTotal = woStatusData.reduce((s, d) => s + d.value, 0);
+  const [selectedReport, setSelectedReport] = useState<{ id: string; name: string; category: string; desc: string } | null>(null);
+  const [reportResult, setReportResult] = useState<ReportDataResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
 
-  // Simple SVG donut
-  const radius = 28, circ = 2 * Math.PI * radius;
-  let offset = 0;
-  const donutSegments = woStatusData.map((d) => {
-    const frac = d.value / donutTotal;
-    const seg = <circle key={d.label} cx="36" cy="36" r={radius} fill="none" stroke={d.color} strokeWidth="10" strokeDasharray={`${frac * circ} ${circ - frac * circ}`} strokeDashoffset={-offset} />;
-    offset += frac * circ;
-    return seg;
-  });
+  const fetchReportData = useCallback(async (reportId: string, category: string, page = 1) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/reports/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          reportId,
+          startDate: dateFrom || undefined,
+          endDate: dateTo || undefined,
+          status: statusFilter || undefined,
+          branchId: branchId || undefined,
+          page,
+          pageSize: 25,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch report');
+      }
+      setReportResult(data);
+      setCurrentPage(page);
+    } catch (err: any) {
+      setError(err.message || 'Error executing report query');
+      setReportResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateFrom, dateTo, statusFilter, branchId]);
+
+  const handleSelectReport = (r: { id: string; name: string; category: string; desc: string }) => {
+    setSelectedReport(r);
+    void fetchReportData(r.id, r.category, 1);
+  };
+
+  const handleExportCsv = async () => {
+    if (!selectedReport) return;
+    setExporting(true);
+    try {
+      const res = await fetch('/api/reports/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: selectedReport.category,
+          reportId: selectedReport.id,
+          startDate: dateFrom || undefined,
+          endDate: dateTo || undefined,
+          status: statusFilter || undefined,
+          branchId: branchId || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedReport.id}_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`Export error: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
-    <div className="space-y-0 pb-8">
+    <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">Reports & Analytics</p>
-          <h1 className="text-2xl font-bold tracking-tight text-[#0B1336]">Reports</h1>
-          <p className="mt-1 text-sm text-slate-500">Performance dashboards, operational analytics and exportable reports across all CMMS modules.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#0B1336]">Operational Reports & Dashboards</h1>
+          <p className="mt-1 text-sm text-slate-500">Live PostgreSQL database-backed reports, analytics and secure CSV exports across all CMMS modules.</p>
         </div>
-        <button className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"><Download className="h-3.5 w-3.5" />Export Report</button>
-      </div>
-
-      {/* Demo banner */}
-      <div className="mb-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-[11px] text-amber-800">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /><strong>Demo data:</strong>&nbsp;All charts use illustrative data. Actual report generation requires backend API integration.
       </div>
 
       {/* Filter bar */}
-      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <Calendar className="h-4 w-4 shrink-0 text-slate-400" />
         <div className="flex items-center gap-2 text-xs">
           <label className="font-semibold text-slate-600">From</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-[#FF5B00] focus:outline-none" />
@@ -115,170 +167,152 @@ export const ReportsView: React.FC = () => {
           <label className="font-semibold text-slate-600">To</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-[#FF5B00] focus:outline-none" />
         </div>
-        <select value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:border-[#FF5B00] focus:outline-none">
-          <option>All branches</option><option>Accra Head Office</option><option>Tema Industrial Region</option><option>Kumasi Regional Hub</option>
-        </select>
-        <button className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF5B00] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#E65200]"><Filter className="h-3.5 w-3.5" />Apply</button>
-        <span className="text-[11px] text-amber-600 font-semibold">Demo: filters do not change chart data</span>
+        <div className="flex items-center gap-2 text-xs">
+          <label className="font-semibold text-slate-600">Status</label>
+          <input type="text" placeholder="e.g. COMPLETED" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-[#FF5B00] focus:outline-none" />
+        </div>
+        {selectedReport && (
+          <button onClick={() => void fetchReportData(selectedReport.id, selectedReport.category, 1)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#FF5B00] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#E65200]">
+            <Filter className="h-3.5 w-3.5" />Apply Filters
+          </button>
+        )}
       </div>
 
-      {/* Featured charts grid */}
-      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Work order status donut */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Work orders</p>
-          <h3 className="mb-3 text-sm font-bold text-[#0B1336]">Status Distribution</h3>
-          <div className="flex items-center gap-4">
-            <div className="relative shrink-0" style={{ width: 80, height: 80 }}>
-              <svg viewBox="0 0 72 72" className="h-full w-full -rotate-90">{donutSegments}</svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-lg font-bold text-[#0B1336]">{donutTotal}</span>
-                <span className="text-[8px] font-semibold uppercase text-slate-400">Total</span>
-              </div>
+      {/* Active Report Viewer Modal / Drawer if selected */}
+      {selectedReport && (
+        <div className="rounded-xl border border-orange-200 bg-white p-5 shadow-md">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div>
+              <span className="inline-block rounded bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF5B00] mb-1">
+                {selectedReport.category}
+              </span>
+              <h2 className="text-lg font-bold text-[#0B1336]">{selectedReport.name}</h2>
+              <p className="text-xs text-slate-500">{selectedReport.desc}</p>
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-              {woStatusData.map((d) => (
-                <div key={d.label} className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
-                  <span className="text-slate-600">{d.label}</span>
-                  <span className="ml-auto font-bold text-slate-700">{d.value}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCsv}
+                disabled={exporting || loading}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0B1336] px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {exporting ? 'Exporting...' : 'Export CSV'}
+              </button>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Summary Cards if present */}
+          {reportResult?.summary && Object.keys(reportResult.summary).length > 0 && (
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {Object.entries(reportResult.summary).map(([k, v]) => (
+                <div key={k} className="rounded-lg bg-slate-50 p-3 border border-slate-200">
+                  <p className="text-[10px] font-bold uppercase text-slate-400">{k.replace(/([A-Z])/g, ' $1')}</p>
+                  <p className="mt-1 text-base font-bold text-[#0B1336]">{String(v)}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* SLA gauge */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">SLA performance</p>
-          <h3 className="mb-3 text-sm font-bold text-[#0B1336]">SLA Compliance</h3>
-          <div className="flex items-center gap-4">
-            <div className="relative shrink-0" style={{ width: 80, height: 80 }}>
-              <svg viewBox="0 0 40 40" className="h-full w-full -rotate-90">
-                <circle cx="20" cy="20" r="15" fill="none" stroke="#e2e8f0" strokeWidth="5" />
-                <circle cx="20" cy="20" r="15" fill="none" stroke="#10b981" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${0.964 * 94.25} ${94.25}`} />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold text-[#0B1336]">96.4%</span>
-                <span className="text-[8px] font-semibold uppercase text-slate-400">SLA</span>
+          {/* Table container */}
+          {loading ? (
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-[#FF5B00]" />
+              <span className="ml-2 text-xs font-semibold text-slate-600">Querying database records...</span>
+            </div>
+          ) : error ? (
+            <div className="rounded-lg bg-rose-50 p-4 text-xs text-rose-800">
+              <p className="font-semibold">Failed to execute report</p>
+              <p className="mt-1">{error}</p>
+            </div>
+          ) : reportResult ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
+                <span>Showing {reportResult.data.length} of {reportResult.totalCount} records</span>
+                <span>Page {reportResult.page} of {Math.ceil(reportResult.totalCount / reportResult.pageSize) || 1}</span>
               </div>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="rounded-lg bg-emerald-50 p-2"><p className="text-[10px] text-emerald-600 font-semibold uppercase">Compliant</p><p className="text-base font-bold text-emerald-700">96.4%</p></div>
-              <div className="rounded-lg bg-rose-50 p-2"><p className="text-[10px] text-rose-500 font-semibold uppercase">Breached</p><p className="text-base font-bold text-rose-600">3.6%</p></div>
-            </div>
-          </div>
-        </div>
-
-        {/* PM compliance */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Preventive maintenance</p>
-          <h3 className="mb-3 text-sm font-bold text-[#0B1336]">PM Compliance</h3>
-          <div className="flex items-center gap-3">
-            <div className="relative shrink-0" style={{ width: 60, height: 60 }}>
-              <svg viewBox="0 0 40 40" className="h-full w-full -rotate-90">
-                <circle cx="20" cy="20" r="15" fill="none" stroke="#e2e8f0" strokeWidth="5" />
-                <circle cx="20" cy="20" r="15" fill="none" stroke="#FF5B00" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(avgCompliance / 100) * 94.25} ${94.25}`} />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center"><span className="text-sm font-bold text-[#0B1336]">{avgCompliance}%</span></div>
-            </div>
-            <div className="flex-1 space-y-1.5">
-              {demoPMPlans.map((p) => (
-                <div key={p.id} className="flex items-center gap-2">
-                  <span className="w-10 font-mono text-[10px] text-slate-400">{p.code}</span>
-                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${p.compliancePercent >= 90 ? 'bg-emerald-400' : 'bg-amber-400'}`} style={{ width: `${p.compliancePercent}%` }} /></div>
-                  <span className="w-8 text-right text-[10px] font-mono font-semibold text-slate-500">{p.compliancePercent}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Spend trend + MTTR */}
-      <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Maintenance spend</p>
-          <h3 className="mb-3 text-sm font-bold text-[#0B1336]">Monthly Expenditure (GH₵)</h3>
-          <div className="flex h-28 items-end gap-2 border-b border-slate-100 pb-1">
-            {spendTrend.map((d) => (
-              <div key={d.label} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                <span className="text-[9px] tabular-nums text-slate-400">{(d.value / 1000).toFixed(0)}k</span>
-                <div className="w-full max-w-8 rounded-t bg-[#0B1336] transition-colors hover:bg-[#FF5B00]" style={{ height: `${Math.max((d.value / maxSpend) * 80, 4)}%` }} />
-                <span className="text-[9px] font-medium text-slate-400">{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Reliability</p>
-          <h3 className="mb-3 text-sm font-bold text-[#0B1336]">MTTR & MTBF by Priority</h3>
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500"><tr><th className="px-3 py-2">Priority</th><th className="px-3 py-2 text-right">MTTR (h)</th><th className="px-3 py-2 text-right">MTBF (h)</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {mttrData.map((r) => (
-                  <tr key={r.priority} className="hover:bg-slate-50">
-                    <td className="px-3 py-2.5 font-semibold text-slate-700">{r.priority}</td>
-                    <td className="px-3 py-2.5 text-right font-mono tabular-nums text-slate-600">{r.mttr}</td>
-                    <td className="px-3 py-2.5 text-right font-mono tabular-nums text-slate-500">{r.mtbf}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-2 text-[10px] text-slate-400">Calculated from work order open/close timestamps and asset downtime logs when connected to live data.</p>
-        </div>
-      </div>
-
-      {/* Technician utilization */}
-      <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Workforce</p>
-        <h3 className="mb-4 text-sm font-bold text-[#0B1336]">Technician Utilization</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {techData.map((t) => (
-            <div key={t.name} className="rounded-lg bg-slate-50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0B1336] text-[10px] font-bold text-white">{t.name.split(' ').map((n) => n[0]).join('')}</div>
-                <p className="text-[11px] font-semibold text-slate-700 truncate">{t.name.split(' ')[0]}</p>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-200"><div className={`h-full rounded-full ${t.pct >= 80 ? 'bg-[#FF5B00]' : 'bg-[#0B1336]'}`} style={{ width: `${t.pct}%` }} /></div>
-              <p className="mt-1 text-right text-[10px] font-mono font-bold text-slate-600">{t.pct}%</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Report catalogue */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">Report library</p>
-        <h3 className="mb-4 text-sm font-bold text-[#0B1336]">Available Reports</h3>
-        <div className="space-y-5">
-          {REPORT_CATALOGUE.map((cat) => (
-            <div key={cat.category}>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">{cat.category}</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {cat.reports.map((r) => (
-                  <button key={r.id} onClick={() => setActiveReport(activeReport === r.id ? null : r.id)} className={`rounded-xl border p-3 text-left transition-all hover:shadow-sm ${activeReport === r.id ? 'border-[#FF5B00] bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <FileBarChart className={`h-4 w-4 ${activeReport === r.id ? 'text-[#FF5B00]' : 'text-slate-400'}`} />
-                      <ArrowRight className="h-3.5 w-3.5 text-slate-300" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-800">{r.name}</p>
-                    <p className="mt-0.5 text-[10px] text-slate-500">{r.desc}</p>
-                    {activeReport === r.id && (
-                      <div className="mt-2 border-t border-orange-200 pt-2 flex items-center justify-between text-[10px]">
-                        <span className="text-amber-600 font-semibold">Demo preview</span>
-                        <button className="inline-flex items-center gap-1 text-[#FF5B00] font-semibold hover:underline"><Download className="h-3 w-3" />Export</button>
-                      </div>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-600">
+                    <tr>
+                      {reportResult.columns.map((col, idx) => (
+                        <th key={idx} className="px-3.5 py-2.5 whitespace-nowrap">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {reportResult.data.length === 0 ? (
+                      <tr>
+                        <td colSpan={reportResult.columns.length} className="px-4 py-8 text-center text-slate-400">
+                          No matching records found for this filter criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      reportResult.data.map((row, rIdx) => (
+                        <tr key={rIdx} className="hover:bg-slate-50">
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="px-3.5 py-2.5 whitespace-nowrap text-slate-700">
+                              {cell !== null && cell !== undefined ? String(cell) : ''}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
                     )}
-                  </button>
-                ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="mt-4 flex items-center justify-between">
+                <button
+                  disabled={currentPage <= 1 || loading}
+                  onClick={() => void fetchReportData(selectedReport.id, selectedReport.category, currentPage - 1)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                </button>
+                <span className="text-xs text-slate-500">Page {currentPage}</span>
+                <button
+                  disabled={currentPage * reportResult.pageSize >= reportResult.totalCount || loading}
+                  onClick={() => void fetchReportData(selectedReport.id, selectedReport.category, currentPage + 1)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Next <ChevronRight className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
-          ))}
+          ) : null}
         </div>
+      )}
+
+      {/* Report Catalogue */}
+      <div className="space-y-6">
+        {REPORT_CATALOGUE.map((cat) => (
+          <div key={cat.category} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#FF5B00]">{cat.category} Reports</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {cat.reports.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => handleSelectReport(r)}
+                  className={`group rounded-xl border p-4 text-left transition-all hover:border-[#FF5B00] hover:shadow-md ${selectedReport?.id === r.id ? 'border-[#FF5B00] bg-orange-50/50' : 'border-slate-200 bg-white'}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <FileBarChart className="h-4 w-4 text-slate-400 group-hover:text-[#FF5B00]" />
+                    <ArrowRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#FF5B00]" />
+                  </div>
+                  <p className="text-xs font-bold text-[#0B1336] group-hover:text-[#FF5B00]">{r.name}</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{r.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

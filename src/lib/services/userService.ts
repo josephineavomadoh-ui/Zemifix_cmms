@@ -42,7 +42,28 @@ const demoRoles = [
   { id: '0192e2b0-8a1c-7fc0-84a2-1b1d8f8a4005', name: 'FinanceApprover', isSystem: true, description: 'Dual-control checker for purchase orders & invoices' },
 ];
 
-const demoUsers: any[] = [
+// Explicit type for demo user records so type inconsistencies surface at compile time
+interface DemoUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  roleId: string;
+  role: (typeof demoRoles)[number];
+  branchId: string;
+  branch: { id: string; name: string; code: string; type: string };
+  departmentId: string;
+  department: { id: string; name: string; code: string };
+  accessScope: string;
+  approvalLimit: number;
+  isActive: boolean;
+  locale: string;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const demoUsers: DemoUser[] = [
   {
     id: '0192e2b0-8a1c-7fc0-84a2-1b1d8f8a5001',
     name: 'System Administrator [DEMO]',
@@ -170,6 +191,46 @@ export async function getUserByEmail(email: string) {
         };
       }
       throw new DatabaseUnavailableError();
+    }
+    throw err;
+  }
+}
+
+/**
+ * Dedicated authentication lookup for staff login.
+ *
+ * Differs from getUserByEmail() in three important ways:
+ *   1. Requires a configured PostgreSQL database — never returns demo data.
+ *   2. Excludes soft-deleted accounts (deletedAt IS NOT NULL).
+ *   3. Returns the full User row including passwordHash so the caller can
+ *      verify credentials internally. Callers MUST NOT forward passwordHash
+ *      to any API response.
+ *
+ * Throws DatabaseUnavailableError when the database is configured but
+ * unreachable. The login endpoint must surface this as 503, not 401.
+ */
+export async function getUserForAuthentication(email: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        role: true,
+        branch: true,
+        department: true,
+      },
+    });
+
+    // Exclude soft-deleted accounts at the service layer
+    if (user && user.deletedAt !== null) {
+      return null;
+    }
+
+    return user ?? null;
+  } catch (err: unknown) {
+    if (isDatabaseConnectionError(err)) {
+      throw new DatabaseUnavailableError(
+        'Authentication service unavailable: cannot reach PostgreSQL.'
+      );
     }
     throw err;
   }

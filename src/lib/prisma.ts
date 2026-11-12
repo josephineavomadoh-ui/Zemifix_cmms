@@ -2,6 +2,11 @@ import { PrismaClient } from '@prisma/client';
 import { generateUuidV7 } from './uuid';
 
 /**
+ * Models without an 'id' primary key (junction tables using compound keys).
+ */
+const modelsWithoutId = new Set(['RolePermission']);
+
+/**
  * Creates an extended PrismaClient that automatically injects RFC 9562 UUIDv7
  * into the `id` field of any record created via application code if not already provided.
  * This guarantees time-ordered primary keys on high-throughput tables.
@@ -16,7 +21,7 @@ function createExtendedPrismaClient() {
     query: {
       $allModels: {
         async create({ model, operation, args, query }) {
-          if (args.data && typeof args.data === 'object') {
+          if (!modelsWithoutId.has(model) && args.data && typeof args.data === 'object') {
             const dataObj = args.data as Record<string, unknown>;
             if (!dataObj.id) {
               dataObj.id = generateUuidV7();
@@ -25,7 +30,7 @@ function createExtendedPrismaClient() {
           return query(args);
         },
         async createMany({ model, operation, args, query }) {
-          if (Array.isArray(args.data)) {
+          if (!modelsWithoutId.has(model) && Array.isArray(args.data)) {
             args.data = args.data.map((item) => {
               if (item && typeof item === 'object') {
                 const itemObj = { ...item } as Record<string, unknown>;
@@ -40,7 +45,7 @@ function createExtendedPrismaClient() {
           return query(args);
         },
         async upsert({ model, operation, args, query }) {
-          if (args.create && typeof args.create === 'object') {
+          if (!modelsWithoutId.has(model) && args.create && typeof args.create === 'object') {
             const createObj = args.create as Record<string, unknown>;
             if (!createObj.id) {
               createObj.id = generateUuidV7();

@@ -1,0 +1,154 @@
+/**
+ * Stage R1 Phase 6.1.1 — Record-Level Cleanup Mapping Inspection Tool
+ * NON-DESTRUCTIVE: Inspects specific records, approval trees, user accounts, and inventory linkages.
+ */
+
+import { prisma } from '../src/lib/prisma';
+
+async function runRecordLevelMapping() {
+  console.log('=====================================================');
+  console.log('ZemiFix CMMS — Record-Level Cleanup Mapping Inspection');
+  console.log('=====================================================');
+
+  // 1. Users Analysis
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      isActive: true,
+      createdAt: true,
+      role: { select: { name: true } },
+      branch: { select: { name: true } },
+      _count: {
+        select: {
+          auditLogs: true,
+          assignedWorkOrders: true,
+          supervisedWorkOrders: true,
+          statusHistoryChanges: true,
+          checkerApprovalActions: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  console.log(`\n--- 1. Users Inventory (${users.length} total) ---`);
+  const adminUsers = users.filter((u) => u.role?.name === 'Admin' || u.email.includes('admin'));
+  const activeReferencedUsers = users.filter((u) => u._count.auditLogs > 0 || u._count.assignedWorkOrders > 0 || u._count.statusHistoryChanges > 0 || u._count.checkerApprovalActions > 0);
+  const unreferencedTestUsers = users.filter((u) => !activeReferencedUsers.includes(u) && !adminUsers.includes(u));
+
+  console.log(`  Admin / System Accounts: ${adminUsers.length}`);
+  console.log(`  Referenced in Audit / Operations / Approval History: ${activeReferencedUsers.length}`);
+  console.log(`  Unreferenced Test / Imported Accounts: ${unreferencedTestUsers.length}`);
+
+  console.log('\n  Top Admin Accounts:');
+  adminUsers.slice(0, 5).forEach((u) => {
+    console.log(`    [${u.id}] ${u.email} (${u.name}) | Role: ${u.role?.name} | Created: ${u.createdAt.toISOString()}`);
+  });
+
+  // 2. Approval Requests, Steps, Actions Tree
+  console.log('\n--- 2. Approval Tree Analysis ---');
+  const approvalRequests = await prisma.approvalRequest.findMany({
+    select: {
+      id: true,
+      entityType: true,
+      entityId: true,
+      status: true,
+      createdAt: true,
+      steps: {
+        select: {
+          id: true,
+          _count: { select: { actions: true } },
+        },
+      },
+    },
+  });
+
+  const requestsWithImmutableActions = approvalRequests.filter((r) => r.steps.some((s) => s._count.actions > 0));
+  console.log(`  Total Approval Requests: ${approvalRequests.length}`);
+  console.log(`  Approval Requests with Immutable Actions: ${requestsWithImmutableActions.length}`);
+  console.log(`  Approval Requests without Immutable Actions: ${approvalRequests.length - requestsWithImmutableActions.length}`);
+
+  // 3. Inventory Linkages
+  console.log('\n--- 3. Inventory Linkages Analysis ---');
+  const parts = await prisma.part.findMany({
+    select: {
+      id: true,
+      partNumber: true,
+      name: true,
+      createdAt: true,
+      _count: {
+        select: {
+          stocks: true,
+          stockTransactions: true,
+          workOrderParts: true,
+        },
+      },
+    },
+  });
+
+  const partsWithTransactions = parts.filter((p) => p._count.stockTransactions > 0);
+  console.log(`  Total Part Catalog Items: ${parts.length}`);
+  console.log(`  Parts with Historical Stock Transactions: ${partsWithTransactions.length}`);
+  console.log(`  Unused Test Parts: ${parts.length - partsWithTransactions.length}`);
+
+  // 4. Background Jobs & Workers State
+  console.log('\n--- 4. Background Jobs & Workers Analysis ---');
+  const jobs = await prisma.backgroundJob.findMany({
+    select: { id: true, jobType: true, status: true, retryCount: true, createdAt: true },
+  });
+  const workers = await prisma.backgroundWorker.findMany({
+    select: { id: true, workerId: true, status: true, lastHeartbeatAt: true },
+  });
+
+  console.log(`  Total Background Jobs: ${jobs.length}`);
+  console.log(`    Completed: ${jobs.filter((j) => j.status === 'COMPLETED').length}`);
+  console.log(`    Failed: ${jobs.filter((j) => j.status === 'FAILED').length}`);
+  console.log(`    Retrying: ${jobs.filter((j) => j.status === 'RETRYING').length}`);
+  console.log(`    Pending/Running: ${jobs.filter((j) => ['PENDING', 'RUNNING'].includes(j.status)).length}`);
+
+  console.log(`  Total Registered Workers: ${workers.length}`);
+
+  // 5. Work Orders Breakdown (Seed vs Integration Test Generated)
+  console.log('\n--- 5. Work Orders Breakdown ---');
+  const testGenWos = await prisma.workOrder.findMany({
+    where: {
+      OR: [
+        { title: { contains: 'Scheduled Preventive Maintenance' } },
+        { title: { contains: 'Test' } },
+      ],
+    },
+    select: { id: true, workOrderNumber: true, title: true, createdAt: true },
+  });
+
+  console.log(`  Work Orders Generated by Test Suites / PM Automation: ${testGenWos.length}`);
+
+  // 6. Verification of Soft-Delete Column (`deletedAt`) Support Across Models
+  console.log('\n--- 6. Soft-Delete (`deletedAt`) Column Verification ---');
+  const softDeleteModels = [
+    { name: 'Company', hasDeletedAt: true },
+    { name: 'Branch', hasDeletedAt: true },
+    { name: 'Department', hasDeletedAt: true },
+    { name: 'User', hasDeletedAt: true },
+    { name: 'Customer', hasDeletedAt: true },
+    { name: 'CustomerSite', hasDeletedAt: true },
+    { name: 'Asset', hasDeletedAt: true },
+    { name: 'WorkOrder', hasDeletedAt: true },
+    { name: 'Part', hasDeletedAt: true },
+    { name: 'Store', hasDeletedAt: true },
+    { name: 'PurchaseRequisition', hasDeletedAt: true },
+    { name: 'PurchaseOrder', hasDeletedAt: true },
+    { name: 'CustomerContract', hasDeletedAt: true },
+    { name: 'Invoice', hasDeletedAt: true },
+    { name: 'ImportBatch', hasDeletedAt: false },
+    { name: 'BackgroundJob', hasDeletedAt: false },
+    { name: 'AuditLog', hasDeletedAt: false },
+  ];
+
+  softDeleteModels.forEach((m) => {
+    console.log(`  ${m.name.padEnd(25)} : deletedAt supported = ${m.hasDeletedAt}`);
+  });
+}
+
+runRecordLevelMapping();

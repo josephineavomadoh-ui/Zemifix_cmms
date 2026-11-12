@@ -5,7 +5,6 @@ import { useAuth } from '@/src/lib/auth-context';
 import {
   Menu,
   Search,
-  Bell,
   Building,
   ChevronDown,
   ShieldCheck,
@@ -14,6 +13,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
+import { NotificationHub } from '../notifications/NotificationHub';
 
 interface TopNavProps {
   onOpenMobile: () => void;
@@ -141,12 +141,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobile }) => {
         </div>
 
         {/* Notifications */}
-        <button
-          title="System Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          <Bell className="h-4 w-4" />
-        </button>
+        <NotificationHub realm="staff" />
 
         <div className="h-5 w-px bg-slate-200 mx-1" />
 

@@ -78,9 +78,21 @@ model Branch {
   deletedAt           DateTime?  @db.Timestamptz
   version             Int        @default(1)
 
-  users       User[]
-  scopeGrants UserScopeGrant[]
-  apiKeys     ApiKey[]
+  users                   User[]
+  scopeGrants             UserScopeGrant[]
+  apiKeys                 ApiKey[]
+  approvalRules           ApprovalRule[]
+  locations               Location[]
+  physicalAssets          Asset[]                  @relation("AssetPhysicalBranch")
+  managedAssets           Asset[]                  @relation("AssetManagingBranch")
+  managedFromHistory      AssetManagementHistory[] @relation("ManagementFromBranch")
+  managedToHistory        AssetManagementHistory[] @relation("ManagementToBranch")
+  workRequests            WorkRequest[]
+  workOrders              WorkOrder[]
+  stores                  Store[]
+  vendors                 Vendor[]
+  purchaseRequisitions    PurchaseRequisition[]
+  purchaseOrders          PurchaseOrder[]
 
   @@index([parentId])
   @@index([path])
@@ -104,8 +116,17 @@ model Department {
   deletedAt  DateTime?    @db.Timestamptz
   version    Int          @default(1)
 
-  users       User[]
-  scopeGrants UserScopeGrant[]
+  users             User[]
+  scopeGrants       UserScopeGrant[]
+  locations         Location[]
+  responsibleAssets Asset[]
+  workRequests      WorkRequest[]
+  workOrders        WorkOrder[]
+  stores                  Store[]
+  purchaseRequisitions    PurchaseRequisition[]
+  purchaseOrders          PurchaseOrder[]
+  rechargesFrom           InternalRecharge[]      @relation("RechargeFromDept")
+  rechargesTo             InternalRecharge[]      @relation("RechargeToDept")
 
   @@index([parentId])
   @@index([path])
@@ -135,13 +156,64 @@ model User {
   updatedAt     DateTime    @updatedAt @db.Timestamptz
   deletedAt     DateTime?   @db.Timestamptz
   version       Int         @default(1)
+  activationTokenHash String? @unique @db.VarChar(64)
+  activationExpiresAt DateTime? @db.Timestamptz
 
   scopeGrants               UserScopeGrant[]
-  grantedScopes             UserScopeGrant[] @relation("ScopeGranter")
+  grantedScopes             UserScopeGrant[]         @relation("ScopeGranter")
   otps                      AuthOtp[]
-  managedBranches           Branch[]         @relation("BranchManager")
-  alternateApprovedBranches Branch[]         @relation("BranchAlternateApprover")
-  headedDepartments         Department[]     @relation("DepartmentHead")
+  managedBranches           Branch[]                 @relation("BranchManager")
+  alternateApprovedBranches Branch[]                 @relation("BranchAlternateApprover")
+  headedDepartments         Department[]             @relation("DepartmentHead")
+  makerApprovalRequests     ApprovalRequest[]        @relation("ApprovalMaker")
+  checkerApprovalActions    ApprovalAction[]         @relation("ApprovalChecker")
+  auditLogs                 AuditLog[]
+  importBatches             ImportBatch[]
+  custodiedAssets           Asset[]                  @relation("AssetCustodianUser")
+  responsibleAssets         Asset[]                  @relation("AssetResponsibleUser")
+  assetLocationMoves        AssetLocationHistory[]
+  assetStatusChanges        AssetStatusHistory[]
+  assetOwnershipTransfers   AssetOwnershipHistory[]
+  assetManagementTransfers  AssetManagementHistory[]
+  meterReadings             MeterReading[]
+  assetDowntimeLogs         AssetDowntimeLog[]
+  requestedWorkRequests     WorkRequest[]            @relation("WorkRequestRequester")
+  supervisedWorkOrders      WorkOrder[]              @relation("WorkOrderSupervisor")
+  assignedWorkOrders        WorkOrder[]              @relation("WorkOrderAssignedUser")
+  statusHistoryChanges      WorkOrderStatusHistory[]
+  workOrderAssignments      WorkOrderAssignmentHistory[] @relation("AssignmentTargetUser")
+  workOrderAssignedBy       WorkOrderAssignmentHistory[] @relation("AssignmentActorUser")
+  completedWorkOrderTasks   WorkOrderTask[]
+  completedChecklists       WorkOrderChecklistItem[]
+  performedLabor            WorkOrderLabor[]            @relation("LaborTechnicianUser")
+  recordedLabor             WorkOrderLabor[]            @relation("LaborRecordedUser")
+  managedStores             Store[]                     @relation("StoreManager")
+  stockTransactions         StockTransaction[]
+  requestedTransfers        StoreTransfer[]             @relation("TransferRequester")
+  approvedTransfers         StoreTransfer[]             @relation("TransferApprover")
+  countedAdjustments        StockAdjustment[]           @relation("AdjustmentCounter")
+  reviewedAdjustments       StockAdjustment[]           @relation("AdjustmentReviewer")
+  requestedRequisitions     PurchaseRequisition[]       @relation("RequisitionRequester")
+  createdRfqs               Rfq[]                       @relation("RfqCreator")
+  approvedPurchaseOrders    PurchaseOrder[]             @relation("PoApprover")
+  receivedGrns              GoodsReceivedNote[]         @relation("GrnReceiver")
+  createdSupplierReturns    SupplierReturn[]            @relation("SupplierReturnCreator")
+  syncBatches               OfflineSyncBatch[]
+  syncMutations             OfflineSyncMutation[]
+  syncConflicts             OfflineSyncConflict[]
+  resolvedSyncConflicts     OfflineSyncConflict[]       @relation("ConflictResolver")
+  createdQuotes             Quote[]                     @relation("QuoteCreator")
+  approvedQuotes            Quote[]                     @relation("QuoteInternalApprover")
+  revisedQuoteVersions      QuoteVersionHistory[]
+  authoredComments          WorkOrderComment[]
+  uploadedAttachments       WorkOrderAttachment[]
+  createdInvoices           Invoice[]                   @relation("InvoiceCreator")
+  approvedInvoices          Invoice[]                   @relation("InvoiceApprover")
+  recordedPayments          Payment[]
+  issuedCreditNotes         CreditNote[]
+  recordedRecharges         InternalRecharge[]
+  staffNotifications        Notification[]             @relation("StaffNotificationRecipient")
+  staffNotificationPreferences NotificationPreference[] @relation("StaffNotificationPreference")
 
   @@index([branchId])
   @@index([departmentId])
@@ -158,9 +230,11 @@ model Role {
   createdAt   DateTime @default(now()) @db.Timestamptz
   updatedAt   DateTime @updatedAt @db.Timestamptz
 
-  users       User[]
-  permissions RolePermission[]
-  apiKeys     ApiKey[]
+  users         User[]
+  permissions   RolePermission[]
+  apiKeys       ApiKey[]
+  approvalRules ApprovalRule[]
+  approvalSteps ApprovalStep[]
 
   @@map("roles")
 }
@@ -232,9 +306,21 @@ model Customer {
   deletedAt        DateTime? @db.Timestamptz
   version          Int       @default(1)
 
-  sites      CustomerSite[]
-  contacts   CustomerContact[]
-  siteGrants CustomerContactSiteGrant[]
+  sites                  CustomerSite[]
+  contacts               CustomerContact[]
+  siteGrants             CustomerContactSiteGrant[]
+  ownedAssets            Asset[]                  @relation("AssetLegalOwner")
+  managedAssets          Asset[]                  @relation("AssetManagingCustomer")
+  ownershipFromHistory   AssetOwnershipHistory[]  @relation("OwnershipFromCustomer")
+  ownershipToHistory     AssetOwnershipHistory[]  @relation("OwnershipToCustomer")
+  managementFromHistory  AssetManagementHistory[] @relation("ManagementFromCustomer")
+  managementToHistory    AssetManagementHistory[] @relation("ManagementToCustomer")
+  contracts              CustomerContract[]
+  workOrders             WorkOrder[]
+  quotes                 Quote[]
+  invoices               Invoice[]
+  payments               Payment[]
+  creditNotes            CreditNote[]
 
   @@index([customerNumber])
   @@index([isActive])
@@ -256,7 +342,15 @@ model CustomerSite {
   updatedAt           DateTime  @updatedAt @db.Timestamptz
   deletedAt           DateTime? @db.Timestamptz
 
-  contactGrants CustomerContactSiteGrant[]
+  contactGrants   CustomerContactSiteGrant[]
+  assets          Asset[]
+  siteFromHistory AssetLocationHistory[]     @relation("SiteFrom")
+  siteToHistory   AssetLocationHistory[]     @relation("SiteTo")
+  contractSites   CustomerContractSite[]
+  workOrders      WorkOrder[]
+  quotes          Quote[]
+  publicIntakes   PublicRequestIntake[]
+  invoices        Invoice[]
 
   @@unique([customerId, siteCode])
   @@unique([id, customerId]) // Compound unique key enabling relational Customer Site Grant Isolation
@@ -286,9 +380,14 @@ model CustomerContact {
   deletedAt           DateTime? @db.Timestamptz
   version             Int       @default(1)
 
-  siteGrants     CustomerContactSiteGrant[]
-  portalSessions PortalSession[]
-  otps           AuthOtp[]
+  siteGrants          CustomerContactSiteGrant[]
+  portalSessions      PortalSession[]
+  otps                AuthOtp[]
+  decidedQuotes       QuoteDecisionLog[]          @relation("QuoteCustomerDecider")
+  authoredComments    WorkOrderComment[]
+  uploadedAttachments WorkOrderAttachment[]
+  portalNotifications Notification[]             @relation("PortalNotificationRecipient")
+  portalNotificationPreferences NotificationPreference[] @relation("PortalNotificationPreference")
 
   @@unique([id, customerId]) // Compound unique key enabling relational Customer Site Grant Isolation
   @@index([customerId])
@@ -342,14 +441,33 @@ model AuthOtp {
   purpose           String           @db.VarChar(30) // LOGIN_MFA | STEP_UP_APPROVAL | PASSWORD_RESET | PHONE_VERIFY
   destination       String           @db.VarChar(150)
   channel           String           @db.VarChar(20) // EMAIL | SMS | WHATSAPP
+  ipAddress         String?          @db.VarChar(45) // IPv4 (max 15 chars) or IPv6 (max 45 chars) — nullable
   expiresAt         DateTime         @db.Timestamptz
   consumedAt        DateTime?        @db.Timestamptz
+  invalidatedAt     DateTime?        @db.Timestamptz // Set on resend; row kept for audit
   attemptCount      Int              @default(0) @db.SmallInt
   createdAt         DateTime         @default(now()) @db.Timestamptz
 
+  // Simple indexes managed by Prisma:
   @@index([userId])
   @@index([customerContactId])
   @@index([purpose, destination])
+  //
+  // Two additional composite PARTIAL indexes exist on this table in the database.
+  // They are NOT declared here because Prisma @@index does not support WHERE
+  // predicates. They are created and managed exclusively by the hand-authored
+  // migration 20261109000001_stage2_otp_enhancement/migration.sql:
+  //
+  //   CREATE INDEX CONCURRENTLY "auth_otps_user_active_idx"
+  //     ON "auth_otps" ("userId", "purpose", "consumedAt", "invalidatedAt")
+  //     WHERE "userId" IS NOT NULL;
+  //
+  //   CREATE INDEX CONCURRENTLY "auth_otps_contact_active_idx"
+  //     ON "auth_otps" ("customerContactId", "purpose", "consumedAt", "invalidatedAt")
+  //     WHERE "customerContactId" IS NOT NULL;
+  //
+  // Do not add @@index([userId, purpose, consumedAt, invalidatedAt]) here —
+  // it would cause prisma migrate diff to generate a duplicate non-partial index.
   @@map("auth_otps")
 }
 
@@ -373,3 +491,2273 @@ model ApiKey {
   @@index([roleId])
   @@map("api_keys")
 }
+
+// ====================================================
+// STAGE D.2a: GOVERNANCE, DUAL-CONTROL & AUDIT CORE
+// ====================================================
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalActionType {
+  APPROVED
+  REJECTED
+}
+
+// 16. Governance Approval Rules
+model ApprovalRule {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String    @db.VarChar(100)
+  entityType           String    @db.VarChar(50) // WORK_ORDER | PURCHASE_ORDER | WORK_ORDER_COST_OVERRUN | TEST_ENTITY
+  branchId             String?   @db.Uuid
+  branch               Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  minAmount            Decimal   @default(0.00) @db.Decimal(14, 2)
+  maxAmount            Decimal?  @db.Decimal(14, 2)
+  priority             Int       @default(100)
+  isActive             Boolean   @default(true)
+  effectiveFrom        DateTime? @db.Timestamptz
+  effectiveTo          DateTime? @db.Timestamptz
+  requiredRoleId       String    @db.Uuid
+  requiredRole         Role      @relation(fields: [requiredRoleId], references: [id], onDelete: Restrict)
+  minimumApprovalLimit Decimal   @default(0.00) @db.Decimal(14, 2)
+  createdAt            DateTime  @default(now()) @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @db.Timestamptz
+
+  @@index([branchId, entityType])
+  @@index([entityType, isActive])
+  @@map("approval_rules")
+}
+
+// 17. Dual-Control Approval Requests (Restrict Delete for History Protection)
+model ApprovalRequest {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType        String                @db.VarChar(50)
+  entityId          String                @db.Uuid
+  version           Int                   @default(1)
+  makerUserId       String                @db.Uuid
+  makerUser         User                  @relation("ApprovalMaker", fields: [makerUserId], references: [id], onDelete: Restrict)
+  requestAmount     Decimal               @default(0.00) @db.Decimal(14, 2)
+  status            ApprovalRequestStatus @default(PENDING)
+  currentStepOrder  Int                   @default(1)
+  totalSteps        Int                   @default(1)
+  payloadHash       String                @db.VarChar(64)
+  previousRequestId String?               @db.Uuid
+  previousRequest   ApprovalRequest?      @relation("ApprovalRequestHistory", fields: [previousRequestId], references: [id], onDelete: Restrict)
+  successorRequests ApprovalRequest[]     @relation("ApprovalRequestHistory")
+  createdAt         DateTime              @default(now()) @db.Timestamptz
+  updatedAt         DateTime              @updatedAt @db.Timestamptz
+
+  steps             ApprovalStep[]
+  workOrders        WorkOrder[]
+  stockTransactions StockTransaction[]
+  storeTransfers    StoreTransfer[]
+  stockAdjustments  StockAdjustment[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseOrders       PurchaseOrder[]
+  quotes               Quote[]
+  invoices             Invoice[]
+  creditNotes          CreditNote[]
+
+  @@index([entityType, entityId, status])
+  @@index([makerUserId])
+  @@map("approval_requests")
+}
+
+// 18. Multi-Step Approval Tiers (Restrict Delete to Preserve History)
+model ApprovalStep {
+  id                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId            String           @db.Uuid
+  request              ApprovalRequest  @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  stepOrder            Int
+  name                 String           @db.VarChar(100)
+  requiredRoleId       String           @db.Uuid
+  requiredRole         Role             @relation(fields: [requiredRoleId], references: [id], onDelete: Restrict)
+  minimumApprovalLimit Decimal          @default(0.00) @db.Decimal(14, 2)
+  isSatisfied          Boolean          @default(false)
+  satisfiedAt          DateTime?        @db.Timestamptz
+  createdAt            DateTime         @default(now()) @db.Timestamptz
+
+  actions              ApprovalAction[]
+
+  @@unique([requestId, stepOrder])
+  @@index([requestId])
+  @@map("approval_steps")
+}
+
+// 19. Immutable Checker Approval Decisions
+model ApprovalAction {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stepId          String             @db.Uuid
+  step            ApprovalStep       @relation(fields: [stepId], references: [id], onDelete: Restrict)
+  checkerUserId   String             @db.Uuid
+  checkerUser     User               @relation("ApprovalChecker", fields: [checkerUserId], references: [id], onDelete: Restrict)
+  action          ApprovalActionType
+  rejectionReason String?            @db.Text
+  actionTimestamp DateTime           @default(now()) @db.Timestamptz
+
+  @@unique([stepId])
+  @@index([stepId])
+  @@index([checkerUserId])
+  @@map("approval_actions")
+}
+
+// 20. Append-Only Cryptographic Audit Log (Single PK on sequenceNumber, ON DELETE RESTRICT on User)
+model AuditLog {
+  sequenceNumber BigInt   @id @db.BigInt
+  id             String   @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId    String?  @db.Uuid
+  actorUser      User?    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  action         String   @db.VarChar(100)
+  resource       String   @db.VarChar(50)
+  resourceId     String   @db.VarChar(100)
+  payload        Json
+  prevHash       String   @db.VarChar(64)
+  hash           String   @db.VarChar(64)
+  createdAt      DateTime @default(now()) @db.Timestamptz
+
+  @@index([resource, resourceId])
+  @@index([resource, resourceId, createdAt])
+  @@index([actorUserId])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
+
+// ====================================================
+// STAGE D.2b: ASSET TAXONOMY, EQUIPMENT REGISTER & TELEMETRY
+// ====================================================
+
+enum OwnershipType {
+  COMPANY_OWNED  // Facility Mode: Internal company-owned asset (ownerCustomerId MUST be NULL)
+  CUSTOMER_OWNED // Contractor Mode: Client-owned asset (ownerCustomerId MUST be NOT NULL)
+  LEASED         // Leased from third-party vendor/lessor (ownerCustomerId MUST be NULL)
+}
+
+enum ManagingOrgType {
+  INTERNAL_BRANCH     // Operational maintenance managed by internal branch
+  EXTERNAL_CONTRACTOR // Operational maintenance managed by external contractor/customer
+}
+
+enum AssetStatus {
+  OPERATIONAL
+  DEGRADED
+  DOWN
+  IN_MAINTENANCE
+  STANDBY
+  RETIRED
+  DISPOSED
+}
+
+enum DowntimeType {
+  UNPLANNED
+  PLANNED
+}
+
+enum MeterReadingType {
+  CONTINUOUS_INCREMENTAL // Running hours, odometer, total cycles (non-decreasing delta >= 0)
+  ABSOLUTE_GAUGE         // Temperature °C, pressure PSI/bar, voltage V (allows negative, positive, or zero delta)
+}
+
+// 21. Asset Classification Hierarchy
+model AssetCategory {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId    String?         @db.Uuid
+  parent      AssetCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children    AssetCategory[] @relation("CategoryHierarchy")
+  name        String          @db.VarChar(100)
+  code        String          @unique @db.VarChar(30)
+  description String?         @db.Text
+  path        String          @default("/") @db.Text
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @db.Timestamptz
+  updatedAt   DateTime        @updatedAt @db.Timestamptz
+  deletedAt   DateTime?       @db.Timestamptz
+
+  assets      Asset[]
+
+  @@index([parentId])
+  @@index([path])
+  @@map("asset_categories")
+}
+
+// 22. Physical Spatial Hierarchy (Composite Unique for Composite FK Integrity)
+model Location {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId     String      @db.Uuid
+  branch       Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  parentId     String?     @db.Uuid
+  parent       Location?   @relation("LocationHierarchy", fields: [parentId, branchId], references: [id, branchId], onDelete: Restrict)
+  children     Location[]  @relation("LocationHierarchy")
+  departmentId String?     @db.Uuid
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  name         String      @db.VarChar(100)
+  code         String      @db.VarChar(30)
+  building     String?     @db.VarChar(50)
+  floor        String?     @db.VarChar(30)
+  room         String?     @db.VarChar(30)
+  path         String      @default("/") @db.Text
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now()) @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @db.Timestamptz
+  deletedAt    DateTime?   @db.Timestamptz
+
+  assets          Asset[]                 @relation("AssetInternalLocation")
+  fromRelocations AssetLocationHistory[]  @relation("LocationFrom")
+  toRelocations   AssetLocationHistory[]  @relation("LocationTo")
+  workRequests    WorkRequest[]
+  workOrders      WorkOrder[]
+
+  @@unique([id, branchId]) // Enables Composite Foreign Key Integrity with Asset & Child Locations
+  @@unique([branchId, code])
+  @@index([branchId])
+  @@index([departmentId])
+  @@index([parentId])
+  @@index([path])
+  @@map("locations")
+}
+
+// 23. Master Equipment Register
+model Asset {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetTag            String          @unique @db.VarChar(50)
+  serialNumber        String?         @db.VarChar(100)
+  barcode             String?         @unique @db.VarChar(100)
+  name                String          @db.VarChar(150)
+  description         String?         @db.Text
+
+  // Legal Ownership (Decoupled from physical location)
+  ownershipType       OwnershipType   @default(COMPANY_OWNED)
+  ownerCustomerId     String?         @db.Uuid
+  ownerCustomer       Customer?       @relation("AssetLegalOwner", fields: [ownerCustomerId], references: [id], onDelete: Restrict)
+
+  // Operational Management Responsibility
+  managingOrgType     ManagingOrgType @default(INTERNAL_BRANCH)
+  managingBranchId    String?         @db.Uuid
+  managingBranch      Branch?         @relation("AssetManagingBranch", fields: [managingBranchId], references: [id], onDelete: Restrict)
+  managingCustomerId  String?         @db.Uuid
+  managingCustomer    Customer?       @relation("AssetManagingCustomer", fields: [managingCustomerId], references: [id], onDelete: Restrict)
+
+  categoryId          String          @db.Uuid
+  category            AssetCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Physical Placement Option A: Internal Location (branchId AND locationId NOT NULL)
+  branchId            String?         @db.Uuid
+  branch              Branch?         @relation("AssetPhysicalBranch", fields: [branchId], references: [id], onDelete: Restrict)
+  locationId          String?         @db.Uuid
+  location            Location?       @relation("AssetInternalLocation", fields: [locationId, branchId], references: [id, branchId], onDelete: Restrict)
+
+  // Physical Placement Option B: Customer Site (siteId AND physicalSiteCustomerId NOT NULL)
+  physicalSiteCustomerId String?      @db.Uuid
+  siteId              String?         @db.Uuid
+  site                CustomerSite?   @relation(fields: [siteId, physicalSiteCustomerId], references: [id, customerId], onDelete: Restrict)
+
+  // Operational Responsibilities & Custody
+  responsibleUserId       String?         @db.Uuid
+  responsibleUser         User?           @relation("AssetResponsibleUser", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  responsibleDepartmentId String?         @db.Uuid
+  responsibleDepartment   Department?     @relation(fields: [responsibleDepartmentId], references: [id], onDelete: SetNull)
+  custodianUserId         String?         @db.Uuid
+  custodianUser           User?           @relation("AssetCustodianUser", fields: [custodianUserId], references: [id], onDelete: SetNull)
+
+  // Sub-Assembly Parent Link
+  parentAssetId       String?         @db.Uuid
+  parentAsset         Asset?          @relation("AssetHierarchy", fields: [parentAssetId], references: [id], onDelete: Restrict)
+  childAssets         Asset[]         @relation("AssetHierarchy")
+
+  status              AssetStatus     @default(OPERATIONAL)
+  criticality         Int             @default(3) @db.SmallInt
+  manufacturer        String?         @db.VarChar(100)
+  modelNumber         String?         @db.VarChar(100)
+  purchaseCost        Decimal?        @db.Decimal(14, 2)
+  purchaseDate        DateTime?       @db.Date
+  installationDate    DateTime?       @db.Date
+  warrantyExpiry      DateTime?       @db.Date
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now()) @db.Timestamptz
+  updatedAt           DateTime        @updatedAt @db.Timestamptz
+  deletedAt           DateTime?       @db.Timestamptz
+
+  locationHistory     AssetLocationHistory[]
+  statusHistory       AssetStatusHistory[]
+  ownershipHistory    AssetOwnershipHistory[]
+  managementHistory   AssetManagementHistory[]
+  meters              AssetMeter[]
+  downtimeLogs        AssetDowntimeLog[]
+  boms                AssetBom[]
+  workRequests        WorkRequest[]
+  workOrders          WorkOrder[]
+  publicIntakes       PublicRequestIntake[]
+
+  @@index([branchId])
+  @@index([locationId])
+  @@index([physicalSiteCustomerId, siteId])
+  @@index([ownerCustomerId])
+  @@index([managingBranchId])
+  @@index([managingCustomerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([branchId, status, categoryId])
+  @@index([managingBranchId, status])
+  @@index([deletedAt, status])
+  @@index([custodianUserId])
+  @@index([responsibleUserId])
+  @@index([responsibleDepartmentId])
+  @@map("assets")
+}
+
+// 24. Asset Location History Log
+model AssetLocationHistory {
+  id                         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId                    String        @db.Uuid
+  asset                      Asset         @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  fromLocationId             String?       @db.Uuid
+  fromLocation               Location?     @relation("LocationFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocationId               String?       @db.Uuid
+  toLocation                 Location?     @relation("LocationTo", fields: [toLocationId], references: [id], onDelete: Restrict)
+
+  fromPhysicalSiteCustomerId String?       @db.Uuid
+  fromSiteId                 String?       @db.Uuid
+  fromSite                   CustomerSite? @relation("SiteFrom", fields: [fromSiteId, fromPhysicalSiteCustomerId], references: [id, customerId], onDelete: Restrict)
+
+  toPhysicalSiteCustomerId   String?       @db.Uuid
+  toSiteId                   String?       @db.Uuid
+  toSite                     CustomerSite? @relation("SiteTo", fields: [toSiteId, toPhysicalSiteCustomerId], references: [id, customerId], onDelete: Restrict)
+
+  snapshotOwnershipType      OwnershipType
+  snapshotOwnerCustomerId    String?       @db.Uuid
+  snapshotManagingOrg        ManagingOrgType
+
+  movedByUserId              String        @db.Uuid
+  movedByUser                User          @relation(fields: [movedByUserId], references: [id], onDelete: Restrict)
+  reason                     String?       @db.Text
+  movedAt                    DateTime      @default(now()) @db.Timestamptz
+
+  @@index([assetId])
+  @@map("asset_locations_history")
+}
+
+// 25. Asset Status Lifecycle Log
+model AssetStatusHistory {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId         String             @db.Uuid
+  asset           Asset              @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromStatus      AssetStatus
+  toStatus        AssetStatus
+  changedByUserId String             @db.Uuid
+  changedByUser   User               @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+  reason          String?            @db.Text
+  changedAt       DateTime           @default(now()) @db.Timestamptz
+
+  downtimeLogs    AssetDowntimeLog[] @relation("DowntimeOriginatingTransition")
+
+  @@index([assetId])
+  @@map("asset_status_history")
+}
+
+// 26. Asset Legal Ownership History Log
+model AssetOwnershipHistory {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId             String        @db.Uuid
+  asset               Asset         @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromOwnershipType   OwnershipType
+  toOwnershipType     OwnershipType
+  fromOwnerCustomerId String?       @db.Uuid
+  fromOwnerCustomer   Customer?     @relation("OwnershipFromCustomer", fields: [fromOwnerCustomerId], references: [id], onDelete: Restrict)
+  toOwnerCustomerId   String?       @db.Uuid
+  toOwnerCustomer     Customer?     @relation("OwnershipToCustomer", fields: [toOwnerCustomerId], references: [id], onDelete: Restrict)
+  transferredByUserId String        @db.Uuid
+  transferredByUser   User          @relation(fields: [transferredByUserId], references: [id], onDelete: Restrict)
+  reason              String?       @db.Text
+  transferredAt       DateTime      @default(now()) @db.Timestamptz
+
+  @@index([assetId])
+  @@map("asset_ownership_history")
+}
+
+// 27. Asset Operational Management History Log
+model AssetManagementHistory {
+  id                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId                String          @db.Uuid
+  asset                  Asset           @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  fromManagingOrg        ManagingOrgType
+  toManagingOrg          ManagingOrgType
+  fromManagingBranchId   String?         @db.Uuid
+  fromManagingBranch     Branch?         @relation("ManagementFromBranch", fields: [fromManagingBranchId], references: [id], onDelete: Restrict)
+  toManagingBranchId     String?         @db.Uuid
+  toManagingBranch       Branch?         @relation("ManagementToBranch", fields: [toManagingBranchId], references: [id], onDelete: Restrict)
+  fromManagingCustomerId String?         @db.Uuid
+  fromManagingCustomer   Customer?       @relation("ManagementFromCustomer", fields: [fromManagingCustomerId], references: [id], onDelete: Restrict)
+  toManagingCustomerId   String?         @db.Uuid
+  toManagingCustomer     Customer?       @relation("ManagementToCustomer", fields: [toManagingCustomerId], references: [id], onDelete: Restrict)
+  transferredByUserId    String          @db.Uuid
+  transferredByUser      User            @relation(fields: [transferredByUserId], references: [id], onDelete: Restrict)
+  reason                 String?         @db.Text
+  transferredAt          DateTime        @default(now()) @db.Timestamptz
+
+  @@index([assetId])
+  @@map("asset_management_history")
+}
+
+// 28. Equipment Telemetry Meters
+model AssetMeter {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId           String           @db.Uuid
+  asset             Asset            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  name              String           @db.VarChar(100)
+  unitOfMeasure     String           @db.VarChar(30)
+  meterType         MeterReadingType @default(CONTINUOUS_INCREMENTAL)
+  initialReading    Decimal          @default(0.00) @db.Decimal(14, 2)
+  currentReading    Decimal          @default(0.00) @db.Decimal(14, 2)
+  rolloverThreshold Decimal?         @db.Decimal(14, 2)
+  lastReadingAt     DateTime?        @db.Timestamptz
+  createdAt         DateTime         @default(now()) @db.Timestamptz
+  updatedAt         DateTime         @updatedAt @db.Timestamptz
+
+  readings          MeterReading[]
+
+  @@unique([assetId, name])
+  @@index([assetId])
+  @@map("asset_meters")
+}
+
+// 29. Telemetry Reading Log (Immutable Ledger)
+model MeterReading {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  meterId          String     @db.Uuid
+  meter            AssetMeter @relation(fields: [meterId], references: [id], onDelete: Restrict)
+  readingValue     Decimal    @db.Decimal(14, 2)
+  delta            Decimal    @default(0.00) @db.Decimal(14, 2)
+  isRollover       Boolean    @default(false)
+  isReset          Boolean    @default(false)
+  recordedByUserId String     @db.Uuid
+  recordedByUser   User       @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  readingTimestamp DateTime   @default(now()) @db.Timestamptz
+
+  @@index([meterId])
+  @@index([readingTimestamp])
+  @@map("meter_readings")
+}
+
+// 30. Equipment Downtime Recording (Controlled One-Time Closure via Trigger)
+model AssetDowntimeLog {
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId                String              @db.Uuid
+  asset                  Asset               @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  downtimeType           DowntimeType        @default(UNPLANNED)
+  previousAssetStatus    AssetStatus         @default(OPERATIONAL)
+  statusWasChanged       Boolean             @default(false)
+  downStatusTransitionId String?             @db.Uuid
+  downStatusTransition   AssetStatusHistory? @relation("DowntimeOriginatingTransition", fields: [downStatusTransitionId], references: [id], onDelete: SetNull)
+  reason                 String              @db.Text
+  startedAt              DateTime            @db.Timestamptz
+  endedAt                DateTime?           @db.Timestamptz
+  durationMinutes        Int?                @db.Integer
+  loggedByUserId         String              @db.Uuid
+  loggedByUser           User                @relation(fields: [loggedByUserId], references: [id], onDelete: Restrict)
+  createdAt              DateTime            @default(now()) @db.Timestamptz
+
+  @@index([assetId])
+  @@index([downStatusTransitionId])
+  @@map("asset_downtime_logs")
+}
+
+// 31. Equipment Bill of Materials (BOM) — Prepared for Stage 5 Inventory Linking
+model AssetBom {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId          String   @db.Uuid
+  asset            Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  partId           String?  @db.Uuid // Linked to Stage 5 Part master
+  part             Part?    @relation(fields: [partId], references: [id], onDelete: SetNull)
+  partNumber       String   @db.VarChar(50)
+  partName         String   @db.VarChar(150)
+  quantityRequired Decimal  @default(1.00) @db.Decimal(14, 2)
+  uom              String   @default("PCS") @db.VarChar(20)
+  createdAt        DateTime @default(now()) @db.Timestamptz
+  updatedAt        DateTime @updatedAt @db.Timestamptz
+
+  @@unique([assetId, partNumber])
+  @@index([assetId])
+  @@index([partId])
+  @@map("asset_boms")
+}
+
+// ====================================================
+// STAGE D.2c: WORK ORDERS & MAINTENANCE CORE
+// ====================================================
+
+enum WorkOrderType {
+  CORRECTIVE
+  PREVENTIVE
+  EMERGENCY
+  INSPECTION
+  GENERAL
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  EMERGENCY
+}
+
+enum WorkOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkRequestStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CONVERTED
+}
+
+// 32. Maintenance Requests
+model WorkRequest {
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestNumber         String            @unique @db.VarChar(50)
+  title                 String            @db.VarChar(150)
+  description           String            @db.Text
+  assetId               String?           @db.Uuid
+  asset                 Asset?            @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  locationId            String?           @db.Uuid
+  location              Location?         @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  branchId              String            @db.Uuid
+  branch                Branch            @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId          String?           @db.Uuid
+  department            Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  requesterUserId       String            @db.Uuid
+  requesterUser         User              @relation("WorkRequestRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  priority              WorkOrderPriority @default(MEDIUM)
+  status                WorkRequestStatus @default(SUBMITTED)
+  rejectionReason       String?           @db.Text
+  convertedWorkOrderId  String?           @db.Uuid
+  convertedWorkOrder    WorkOrder?        @relation("RequestConvertedWorkOrder", fields: [convertedWorkOrderId], references: [id], onDelete: SetNull)
+  quotes                Quote[]
+  createdAt             DateTime          @default(now()) @db.Timestamptz
+  updatedAt             DateTime          @updatedAt @db.Timestamptz
+
+  @@index([branchId])
+  @@index([assetId])
+  @@index([requesterUserId])
+  @@index([status])
+  @@map("work_requests")
+}
+
+// 33. Master Work Orders
+model WorkOrder {
+  id                    String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderNumber       String                   @unique @db.VarChar(50)
+  title                 String                   @db.VarChar(150)
+  description           String                   @db.Text
+  type                  WorkOrderType            @default(CORRECTIVE)
+  priority              WorkOrderPriority        @default(MEDIUM)
+  status                WorkOrderStatus          @default(OPEN)
+  assetId               String?                  @db.Uuid
+  asset                 Asset?                   @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  locationId            String?                  @db.Uuid
+  location              Location?                @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  branchId              String                   @db.Uuid
+  branch                Branch                   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId          String?                  @db.Uuid
+  department            Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  supervisorUserId      String?                  @db.Uuid
+  supervisorUser        User?                    @relation("WorkOrderSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  assignedUserId        String?                  @db.Uuid
+  assignedUser          User?                    @relation("WorkOrderAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  plannedStart          DateTime?                @db.Timestamptz
+  plannedEnd            DateTime?                @db.Timestamptz
+  actualStart           DateTime?                @db.Timestamptz
+  actualEnd             DateTime?                @db.Timestamptz
+  estimatedHours        Decimal                  @default(0.00) @db.Decimal(10, 2)
+  actualHours           Decimal                  @default(0.00) @db.Decimal(10, 2)
+  estimatedCost         Decimal                  @default(0.00) @db.Decimal(14, 2)
+  totalCost             Decimal                  @default(0.00) @db.Decimal(14, 2)
+  cancellationReason    String?                  @db.Text
+
+  approvalRequestId     String?                  @db.Uuid
+  approvalRequest       ApprovalRequest?         @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+
+  // Contractor Mode & SLA Integration Additions
+  customerId                 String?           @db.Uuid
+  customer                   Customer?         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  siteId                     String?           @db.Uuid
+  site                       CustomerSite?     @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  contractId                 String?           @db.Uuid
+  contract                   CustomerContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  slaPolicyId                String?           @db.Uuid
+  slaPolicy                  SlaPolicy?        @relation(fields: [slaPolicyId], references: [id], onDelete: SetNull)
+
+  // Immutable SLA Commitment Snapshots (Preserves historical targets per cycle even if contract/policy changes)
+  slaResponseTargetMinutes   Int?              @db.Integer
+  slaResolutionTargetMinutes Int?              @db.Integer
+  slaSnapshotPolicyId        String?           @db.Uuid
+  slaSnapshotCalendarId      String?           @db.Uuid
+  slaSnapshotCalendarVersion Int?              @db.Integer
+  slaSnapshotCalendarData    Json?
+  slaCycle                   Int               @default(1) @db.Integer
+
+  slaBreaches                SlaBreachLog[]
+
+  sourceWorkRequests    WorkRequest[]            @relation("RequestConvertedWorkOrder")
+  statusHistory         WorkOrderStatusHistory[]
+  assignmentHistory     WorkOrderAssignmentHistory[]
+  tasks                 WorkOrderTask[]
+  checklists            WorkOrderChecklistItem[]
+  labor                 WorkOrderLabor[]
+  parts                 WorkOrderPart[]
+  failureRecords        WorkOrderFailureRecord[]
+  stockTransactions     StockTransaction[]
+  quotes                Quote[]
+  comments              WorkOrderComment[]
+  attachments           WorkOrderAttachment[]
+  invoices              Invoice[]
+  invoiceLines          InvoiceLine[]
+  internalRecharges     InternalRecharge[]
+
+  createdAt             DateTime                 @default(now()) @db.Timestamptz
+  updatedAt             DateTime                 @updatedAt @db.Timestamptz
+  deletedAt             DateTime?                @db.Timestamptz
+
+  @@index([branchId])
+  @@index([assetId])
+  @@index([locationId])
+  @@index([status])
+  @@index([type])
+  @@index([assignedUserId])
+  @@index([supervisorUserId])
+  @@index([branchId, status, createdAt])
+  @@index([assignedUserId, status, plannedStart])
+  @@index([customerId, status, createdAt])
+  @@index([deletedAt, status])
+  @@map("work_orders")
+}
+
+// 34. Work Order Status History
+model WorkOrderStatusHistory {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId     String          @db.Uuid
+  workOrder       WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  fromStatus      WorkOrderStatus
+  toStatus        WorkOrderStatus
+  changedByUserId String          @db.Uuid
+  changedByUser   User            @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+  reason          String?         @db.Text
+  changedAt       DateTime        @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@map("work_order_status_history")
+}
+
+// 35. Work Order Assignment History
+model WorkOrderAssignmentHistory {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId      String    @db.Uuid
+  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  assignedUserId   String    @db.Uuid
+  assignedUser     User      @relation("AssignmentTargetUser", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  assignedByUserId String    @db.Uuid
+  assignedByUser   User      @relation("AssignmentActorUser", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  assignedAt       DateTime  @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@map("work_order_assignment_history")
+}
+
+// 36. Work Order Tasks
+model WorkOrderTask {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId       String    @db.Uuid
+  workOrder         WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  taskOrder         Int       @db.SmallInt
+  title             String    @db.VarChar(150)
+  description       String?   @db.Text
+  isCompleted       Boolean   @default(false)
+  completedAt       DateTime? @db.Timestamptz
+  completedByUserId String?   @db.Uuid
+  completedByUser   User?     @relation(fields: [completedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([workOrderId, taskOrder])
+  @@index([workOrderId])
+  @@map("work_order_tasks")
+}
+
+// 37. Work Order Checklist Items
+model WorkOrderChecklistItem {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId       String    @db.Uuid
+  workOrder         WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  itemOrder         Int       @db.SmallInt
+  description       String    @db.VarChar(200)
+  isMandatory       Boolean   @default(true)
+  passFail          Boolean?  // null = pending, true = pass, false = fail
+  remarks           String?   @db.Text
+  completedAt       DateTime? @db.Timestamptz
+  completedByUserId String?   @db.Uuid
+  completedByUser   User?     @relation(fields: [completedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([workOrderId, itemOrder])
+  @@index([workOrderId])
+  @@map("work_order_checklist_items")
+}
+
+// 38. Work Order Labor Tracking
+model WorkOrderLabor {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId      String    @db.Uuid
+  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  technicianUserId String    @db.Uuid
+  technicianUser   User      @relation("LaborTechnicianUser", fields: [technicianUserId], references: [id], onDelete: Restrict)
+  workDate         DateTime  @db.Date
+  startTime        DateTime? @db.Timestamptz
+  endTime          DateTime? @db.Timestamptz
+  hoursWorked      Decimal   @db.Decimal(10, 2)
+  skillCategory    RateCardCategory @default(REGULAR)
+  hourlyRate       Decimal   @default(0.00) @db.Decimal(10, 2)
+  totalCost        Decimal   @default(0.00) @db.Decimal(14, 2)
+  description      String?   @db.Text
+  recordedByUserId String    @db.Uuid
+  recordedByUser   User      @relation("LaborRecordedUser", fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@index([technicianUserId])
+  @@map("work_order_labor")
+}
+
+// 39. Work Order Material Requirements & Consumption (Prepared for Stage 5 Inventory Linking)
+model WorkOrderPart {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId      String    @db.Uuid
+  workOrder        WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  partId           String?   @db.Uuid // Linked to Stage 5 Part master
+  part             Part?     @relation(fields: [partId], references: [id], onDelete: SetNull)
+  partNumber       String    @db.VarChar(50)
+  partName         String    @db.VarChar(150)
+  quantityPlanned  Decimal   @default(1.00) @db.Decimal(14, 2)
+  quantityConsumed Decimal   @default(0.00) @db.Decimal(14, 2)
+  quantityReturned Decimal   @default(0.00) @db.Decimal(14, 2)
+  unitCost         Decimal   @default(0.00) @db.Decimal(14, 2)
+  uom              String    @default("PCS") @db.VarChar(20)
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @db.Timestamptz
+
+  @@unique([workOrderId, partNumber])
+  @@index([workOrderId])
+  @@index([partId])
+  @@map("work_order_parts")
+}
+
+// 40. Failure Master Codes (RCM Framework)
+model FailureCode {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique @db.VarChar(30)
+  category    String   @db.VarChar(50) // PROBLEM | CAUSE | REMEDY
+  description String   @db.VarChar(150)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  failureRecords WorkOrderFailureRecord[]
+
+  @@index([category])
+  @@map("failure_codes")
+}
+
+// 41. Work Order Failure Analysis Records
+model WorkOrderFailureRecord {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId   String      @db.Uuid
+  workOrder     WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  failureCodeId String      @db.Uuid
+  failureCode   FailureCode @relation(fields: [failureCodeId], references: [id], onDelete: Restrict)
+  notes         String?     @db.Text
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@index([failureCodeId])
+  @@map("work_order_failure_records")
+}
+
+// ====================================================
+// STAGE D.3: INVENTORY MANAGEMENT CORE & STOCK LEDGER
+// ====================================================
+
+enum InventoryTransactionType {
+  OPENING_BALANCE
+  RECEIPT
+  ISSUE
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  RETURN_IN
+  RETURN_OUT
+  REVERSAL
+}
+
+enum TransferStatus {
+  PENDING_APPROVAL
+  APPROVED
+  DISPATCHED
+  RECEIVED
+  CANCELLED
+}
+
+enum StockAdjustmentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  CANCELLED
+}
+
+// 42. Master Item Catalog / Parts Master
+model Part {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partNumber       String      @unique @db.VarChar(50)
+  name             String      @db.VarChar(150)
+  description      String?     @db.Text
+  category         String      @default("SPARE_PARTS") @db.VarChar(50) // SPARE_PARTS, ELECTRICAL, MECHANICAL, CONSUMABLES, TOOLS, SAFETY, GENERAL
+  subcategory      String?     @db.VarChar(50)
+  uom              String      @default("PCS") @db.VarChar(20)
+  barcode          String?     @unique @db.VarChar(100)
+  manufacturer     String?     @db.VarChar(100)
+  brand            String?     @db.VarChar(100)
+  modelNumber      String?     @db.VarChar(100)
+  preferredVendor  String?     @db.VarChar(150)
+  minStockLevel    Decimal     @default(0.00) @db.Decimal(14, 2)
+  maxStockLevel    Decimal?    @db.Decimal(14, 2)
+  reorderLevel     Decimal     @default(0.00) @db.Decimal(14, 2)
+  reorderQuantity  Decimal     @default(1.00) @db.Decimal(14, 2)
+  standardCost     Decimal     @default(0.00) @db.Decimal(14, 2)
+  averageCost      Decimal     @default(0.00) @db.Decimal(14, 2) // Global Weighted Average Cost (WAC)
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now()) @db.Timestamptz
+  updatedAt        DateTime    @updatedAt @db.Timestamptz
+  deletedAt        DateTime?   @db.Timestamptz
+
+  stocks            Stock[]
+  stockTransactions StockTransaction[]
+  transferLines     StoreTransferLine[]
+  adjustmentLines   StockAdjustmentLine[]
+  assetBoms         AssetBom[]
+  workOrderParts    WorkOrderPart[]
+  requisitionItems  PurchaseRequisitionItem[]
+  poItems           PurchaseOrderItem[]
+  grnItems          GoodsReceivedNoteItem[]
+  supplierReturnItems SupplierReturnItem[]
+  quoteLines        QuoteLine[]
+  invoiceLines      InvoiceLine[]
+
+  @@index([partNumber])
+  @@index([category])
+  @@index([isActive])
+  @@map("parts")
+}
+
+// 43. Warehouses & Physical Stores
+model Store {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String      @unique @db.VarChar(30)
+  name         String      @db.VarChar(100)
+  type         String      @default("MAIN") @db.VarChar(30) // MAIN | BRANCH | DEPARTMENT
+  branchId     String      @db.Uuid
+  branch       Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId String?     @db.Uuid
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  isMain       Boolean     @default(false)
+  isActive     Boolean     @default(true)
+  managerUserId String?    @db.Uuid
+  managerUser  User?       @relation("StoreManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now()) @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @db.Timestamptz
+  deletedAt    DateTime?   @db.Timestamptz
+
+  stocks                 Stock[]
+  stockTransactions      StockTransaction[]
+  sourceTransfers        StoreTransfer[]       @relation("TransferSourceStore")
+  destinationTransfers   StoreTransfer[]       @relation("TransferDestinationStore")
+  adjustments            StockAdjustment[]
+  goodsReceivedNotes     GoodsReceivedNote[]
+  supplierReturns        SupplierReturn[]
+
+  @@index([branchId])
+  @@index([departmentId])
+  @@map("stores")
+}
+
+// 44. Warehouse Stock Balances (Materialized Store-Item Balance)
+model Stock {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  storeId           String   @db.Uuid
+  store             Store    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  partId            String   @db.Uuid
+  part              Part     @relation(fields: [partId], references: [id], onDelete: Restrict)
+  quantityOnHand    Decimal  @default(0.00) @db.Decimal(14, 2)
+  quantityReserved  Decimal  @default(0.00) @db.Decimal(14, 2)
+  quantityAvailable Decimal  @default(0.00) @db.Decimal(14, 2)
+  quantityOnOrder   Decimal  @default(0.00) @db.Decimal(14, 2)
+  averageUnitCost   Decimal  @default(0.00) @db.Decimal(14, 2) // Store WAC
+  totalValue        Decimal  @default(0.00) @db.Decimal(14, 2)
+  binLocation       String?  @db.VarChar(50)
+  updatedAt         DateTime @updatedAt @db.Timestamptz
+
+  @@unique([storeId, partId])
+  @@index([storeId])
+  @@index([partId])
+  @@map("stock")
+}
+
+// 45. Authoritative Append-Only Stock Transaction Ledger
+model StockTransaction {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionRef     String                   @unique @db.VarChar(50)
+  transactionType    InventoryTransactionType
+  storeId            String                   @db.Uuid
+  store              Store                    @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  partId             String                   @db.Uuid
+  part               Part                     @relation(fields: [partId], references: [id], onDelete: Restrict)
+  quantity           Decimal                  @db.Decimal(14, 2)
+  unitCost           Decimal                  @db.Decimal(14, 2)
+  totalCost          Decimal                  @db.Decimal(14, 2)
+  balanceAfter       Decimal                  @db.Decimal(14, 2)
+  wacAfter           Decimal                  @db.Decimal(14, 2)
+  referenceDoc       String?                  @db.VarChar(100)
+  workOrderId        String?                  @db.Uuid
+  workOrder          WorkOrder?               @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  transactionGroupId String?                  @db.Uuid // Groups paired transfer & reversal operations
+  actingUserId       String                   @db.Uuid
+  actingUser         User                     @relation(fields: [actingUserId], references: [id], onDelete: Restrict)
+  approvalRequestId  String?                  @db.Uuid
+  approvalRequest    ApprovalRequest?         @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  createdAt          DateTime                 @default(now()) @db.Timestamptz
+
+  @@index([storeId, partId])
+  @@index([storeId, partId, createdAt])
+  @@index([transactionType])
+  @@index([workOrderId])
+  @@index([transactionGroupId])
+  @@index([createdAt])
+  @@map("stock_transactions")
+}
+
+// 46. Store Transfers
+model StoreTransfer {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transferNumber       String          @unique @db.VarChar(50)
+  sourceStoreId        String          @db.Uuid
+  sourceStore          Store           @relation("TransferSourceStore", fields: [sourceStoreId], references: [id], onDelete: Restrict)
+  destinationStoreId   String          @db.Uuid
+  destinationStore     Store           @relation("TransferDestinationStore", fields: [destinationStoreId], references: [id], onDelete: Restrict)
+  status               TransferStatus  @default(PENDING_APPROVAL)
+  requestedByUserId    String          @db.Uuid
+  requestedByUser      User            @relation("TransferRequester", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  approvedByUserId     String?         @db.Uuid
+  approvedByUser       User?           @relation("TransferApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvalRequestId    String?         @db.Uuid
+  approvalRequest      ApprovalRequest? @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  dispatchedAt         DateTime?       @db.Timestamptz
+  receivedAt           DateTime?       @db.Timestamptz
+  notes                String?         @db.Text
+  createdAt            DateTime        @default(now()) @db.Timestamptz
+  updatedAt            DateTime        @updatedAt @db.Timestamptz
+
+  lines                StoreTransferLine[]
+
+  @@index([sourceStoreId])
+  @@index([destinationStoreId])
+  @@index([status])
+  @@map("store_transfers")
+}
+
+// 47. Store Transfer Lines
+model StoreTransferLine {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transferId         String        @db.Uuid
+  transfer           StoreTransfer @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  partId             String        @db.Uuid
+  part               Part          @relation(fields: [partId], references: [id], onDelete: Restrict)
+  quantityRequested  Decimal       @db.Decimal(14, 2)
+  quantityDispatched Decimal       @default(0.00) @db.Decimal(14, 2)
+  quantityReceived   Decimal       @default(0.00) @db.Decimal(14, 2)
+
+  @@unique([transferId, partId])
+  @@index([transferId])
+  @@map("store_transfer_lines")
+}
+
+// 48. Stock Count & Adjustment Session
+model StockAdjustment {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adjustmentNumber   String                @unique @db.VarChar(50)
+  storeId            String                @db.Uuid
+  store              Store                 @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  reason             String                @db.Text
+  status             StockAdjustmentStatus @default(DRAFT)
+  countDate          DateTime              @db.Date
+  countedByUserId    String                @db.Uuid
+  countedByUser      User                  @relation("AdjustmentCounter", fields: [countedByUserId], references: [id], onDelete: Restrict)
+  reviewedByUserId   String?               @db.Uuid
+  reviewedByUser     User?                 @relation("AdjustmentReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  approvalRequestId  String?               @db.Uuid
+  approvalRequest    ApprovalRequest?      @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  createdAt          DateTime              @default(now()) @db.Timestamptz
+  updatedAt          DateTime              @updatedAt @db.Timestamptz
+
+  lines              StockAdjustmentLine[]
+
+  @@index([storeId])
+  @@index([status])
+  @@map("stock_adjustments")
+}
+
+// 49. Stock Adjustment Lines
+model StockAdjustmentLine {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adjustmentId     String           @db.Uuid
+  adjustment       StockAdjustment  @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+  partId           String           @db.Uuid
+  part             Part             @relation(fields: [partId], references: [id], onDelete: Restrict)
+  systemQuantity   Decimal          @db.Decimal(14, 2)
+  countedQuantity  Decimal          @db.Decimal(14, 2)
+  variance         Decimal          @db.Decimal(14, 2)
+  unitCost         Decimal          @db.Decimal(14, 2)
+  adjustmentType   InventoryTransactionType // ADJUSTMENT_IN | ADJUSTMENT_OUT
+
+  @@unique([adjustmentId, partId])
+  @@index([adjustmentId])
+  @@map("stock_adjustment_lines")
+}
+
+// ====================================================
+// STAGE D.4: PROCUREMENT & VENDOR MANAGEMENT
+// ====================================================
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum RequisitionStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CONVERTED_TO_PO
+  CANCELLED
+}
+
+enum RfqStatus {
+  DRAFT
+  SENT
+  CLOSED
+  EVALUATED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum GrnStatus {
+  RECEIVED
+  INSPECTED
+  ACCEPTED
+  REJECTED
+  PARTIAL
+}
+
+enum SupplierReturnStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+  COMPLETED
+  CANCELLED
+}
+
+// 50. Vendor Master Catalog
+model Vendor {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String       @unique @db.VarChar(30)
+  registeredName      String       @db.VarChar(150)
+  tradingName         String?      @db.VarChar(150)
+  vendorType          String       @default("SUPPLIER") @db.VarChar(50) // SUPPLIER | CONTRACTOR | SERVICE_PROVIDER
+  contactPerson       String?      @db.VarChar(100)
+  email               String       @db.VarChar(150)
+  phone               String       @db.VarChar(50)
+  address             String       @db.Text
+  ghanaPostGps        String?      @db.VarChar(30)
+  country             String       @default("Ghana") @db.VarChar(50)
+  taxId               String?      @db.VarChar(50) // GRA TIN
+  vatRegistered       Boolean      @default(true)
+  paymentTermsDays    Int          @default(30) @db.SmallInt
+  bankDetails         Json?        @default("{}")
+  preferredVendor     Boolean      @default(false)
+  rating              Decimal      @default(5.00) @db.Decimal(3, 2)
+  status              VendorStatus @default(ACTIVE)
+  branchId            String?      @db.Uuid
+  branch              Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt           DateTime     @default(now()) @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @db.Timestamptz
+  deletedAt           DateTime?    @db.Timestamptz
+
+  rfqVendors          RfqVendor[]
+  purchaseOrders      PurchaseOrder[]
+  goodsReceivedNotes  GoodsReceivedNote[]
+  supplierReturns     SupplierReturn[]
+
+  @@index([code])
+  @@index([status])
+  @@map("vendors")
+}
+
+// 51. Purchase Requisitions Header
+model PurchaseRequisition {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requisitionNumber    String            @unique @db.VarChar(50)
+  branchId             String            @db.Uuid
+  branch               Branch            @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId         String?           @db.Uuid
+  department           Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  requesterUserId      String            @db.Uuid
+  requesterUser        User              @relation("RequisitionRequester", fields: [requesterUserId], references: [id], onDelete: Restrict)
+  requestDate          DateTime          @default(now()) @db.Date
+  requiredDate         DateTime?         @db.Date
+  priority             WorkOrderPriority @default(MEDIUM)
+  justification        String            @db.Text
+  estimatedTotal       Decimal           @default(0.00) @db.Decimal(14, 2)
+  status               RequisitionStatus @default(DRAFT)
+  approvalRequestId    String?           @db.Uuid
+  approvalRequest      ApprovalRequest?  @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now()) @db.Timestamptz
+  updatedAt            DateTime          @updatedAt @db.Timestamptz
+  deletedAt            DateTime?         @db.Timestamptz
+
+  items                PurchaseRequisitionItem[]
+  rfqs                 Rfq[]
+  purchaseOrders       PurchaseOrder[]
+
+  @@index([branchId])
+  @@index([status])
+  @@map("purchase_requisitions")
+}
+
+// 52. Purchase Requisition Line Items
+model PurchaseRequisitionItem {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requisitionId      String              @db.Uuid
+  requisition        PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Restrict)
+  partId             String?             @db.Uuid
+  part               Part?               @relation(fields: [partId], references: [id], onDelete: SetNull)
+  description        String              @db.VarChar(200)
+  quantity           Decimal             @db.Decimal(14, 2)
+  estimatedUnitPrice Decimal             @default(0.00) @db.Decimal(14, 2)
+  estimatedTotal     Decimal             @default(0.00) @db.Decimal(14, 2)
+
+  @@index([requisitionId])
+  @@map("purchase_requisition_items")
+}
+
+// 53. Request For Quotation (RFQ) Header
+model Rfq {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rfqNumber     String              @unique @db.VarChar(50)
+  requisitionId String?             @db.Uuid
+  requisition   PurchaseRequisition? @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  title         String              @db.VarChar(150)
+  status        RfqStatus           @default(DRAFT)
+  closingDate   DateTime?           @db.Date
+  notes         String?             @db.Text
+  createdByUserId String            @db.Uuid
+  createdByUser User                @relation("RfqCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt     DateTime            @default(now()) @db.Timestamptz
+  updatedAt     DateTime            @updatedAt @db.Timestamptz
+
+  rfqVendors    RfqVendor[]
+
+  @@index([status])
+  @@map("rfqs")
+}
+
+// 54. RFQ Vendor Invitation & Quotation Response
+model RfqVendor {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rfqId                 String    @db.Uuid
+  rfq                   Rfq       @relation(fields: [rfqId], references: [id], onDelete: Restrict)
+  vendorId              String    @db.Uuid
+  vendor                Vendor    @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  quotedUnitPrice       Decimal?  @db.Decimal(14, 2)
+  quotedTotalPrice      Decimal?  @db.Decimal(14, 2)
+  deliveryDays          Int?      @db.SmallInt
+  paymentTerms          String?   @db.VarChar(100)
+  validityDate          DateTime? @db.Date
+  isSelected            Boolean   @default(false)
+  selectionJustification String?  @db.Text
+  quotedAt              DateTime? @db.Timestamptz
+
+  @@unique([rfqId, vendorId])
+  @@index([rfqId])
+  @@index([vendorId])
+  @@map("rfq_vendors")
+}
+
+// 55. Master Purchase Orders Header
+model PurchaseOrder {
+  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poNumber             String              @unique @db.VarChar(50)
+  vendorId             String              @db.Uuid
+  vendor               Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  requisitionId        String?             @db.Uuid
+  requisition          PurchaseRequisition? @relation(fields: [requisitionId], references: [id], onDelete: SetNull)
+  branchId             String              @db.Uuid
+  branch               Branch              @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  departmentId         String?             @db.Uuid
+  department           Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  orderDate            DateTime            @default(now()) @db.Date
+  expectedDeliveryDate DateTime?           @db.Date
+  currency             String              @default("GHS") @db.Char(3)
+  subtotal             Decimal             @default(0.00) @db.Decimal(14, 2)
+  vatAmount            Decimal             @default(0.00) @db.Decimal(14, 2) // 15% VAT
+  nhilAmount           Decimal             @default(0.00) @db.Decimal(14, 2) // 2.5% NHIL
+  getFundAmount        Decimal             @default(0.00) @db.Decimal(14, 2) // 2.5% GETFund
+  totalAmount          Decimal             @default(0.00) @db.Decimal(14, 2)
+  paymentTermsDays     Int                 @default(30) @db.SmallInt
+  deliveryAddress      String              @db.Text
+  status               PurchaseOrderStatus @default(DRAFT)
+  issuedAt             DateTime?           @db.Timestamptz
+  approvedByUserId     String?             @db.Uuid
+  approvedByUser       User?               @relation("PoApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvalRequestId    String?             @db.Uuid
+  approvalRequest      ApprovalRequest?    @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  createdAt            DateTime            @default(now()) @db.Timestamptz
+  updatedAt            DateTime            @updatedAt @db.Timestamptz
+  deletedAt            DateTime?           @db.Timestamptz
+
+  items                PurchaseOrderItem[]
+  goodsReceivedNotes   GoodsReceivedNote[]
+
+  @@index([vendorId])
+  @@index([branchId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+// 56. Purchase Order Line Items
+model PurchaseOrderItem {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poId              String        @db.Uuid
+  po                PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Restrict)
+  partId            String?       @db.Uuid
+  part              Part?         @relation(fields: [partId], references: [id], onDelete: SetNull)
+  description       String        @db.VarChar(200)
+  quantityOrdered   Decimal       @db.Decimal(14, 2)
+  quantityReceived  Decimal       @default(0.00) @db.Decimal(14, 2)
+  quantityReturned  Decimal       @default(0.00) @db.Decimal(14, 2)
+  unitPrice         Decimal       @db.Decimal(14, 2)
+  discountAmount    Decimal       @default(0.00) @db.Decimal(14, 2)
+  lineTotal         Decimal       @db.Decimal(14, 2)
+
+  grnItems          GoodsReceivedNoteItem[]
+
+  @@index([poId])
+  @@map("purchase_order_items")
+}
+
+// 57. Goods Received Notes (GRN) Header
+model GoodsReceivedNote {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grnNumber        String        @unique @db.VarChar(50)
+  poId             String        @db.Uuid
+  po               PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Restrict)
+  vendorId         String        @db.Uuid
+  vendor           Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  storeId          String        @db.Uuid
+  store            Store         @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  deliveryDate     DateTime      @default(now()) @db.Date
+  invoiceReference String?       @db.VarChar(100)
+  notes            String?       @db.Text
+  status           GrnStatus     @default(ACCEPTED)
+  receivedByUserId String        @db.Uuid
+  receivedByUser   User          @relation("GrnReceiver", fields: [receivedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+
+  items            GoodsReceivedNoteItem[]
+  supplierReturns  SupplierReturn[]
+
+  @@index([poId])
+  @@index([vendorId])
+  @@index([storeId])
+  @@map("goods_received_notes")
+}
+
+// 58. Goods Received Note Line Items
+model GoodsReceivedNoteItem {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grnId            String            @db.Uuid
+  grn              GoodsReceivedNote @relation(fields: [grnId], references: [id], onDelete: Restrict)
+  poItemId         String            @db.Uuid
+  poItem           PurchaseOrderItem @relation(fields: [poItemId], references: [id], onDelete: Restrict)
+  partId           String?           @db.Uuid
+  part             Part?             @relation(fields: [partId], references: [id], onDelete: SetNull)
+  quantityReceived Decimal           @db.Decimal(14, 2)
+  quantityAccepted Decimal           @db.Decimal(14, 2)
+  quantityRejected Decimal           @default(0.00) @db.Decimal(14, 2)
+  unitCost         Decimal           @db.Decimal(14, 2)
+
+  @@index([grnId])
+  @@index([poItemId])
+  @@map("goods_received_note_items")
+}
+
+// 59. Supplier Returns Header
+model SupplierReturn {
+  id               String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnNumber     String               @unique @db.VarChar(50)
+  grnId            String               @db.Uuid
+  grn              GoodsReceivedNote    @relation(fields: [grnId], references: [id], onDelete: Restrict)
+  vendorId         String               @db.Uuid
+  vendor           Vendor               @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  storeId          String               @db.Uuid
+  store            Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  returnDate       DateTime             @default(now()) @db.Date
+  reason           String               @db.Text
+  status           SupplierReturnStatus @default(COMPLETED)
+  createdByUserId  String               @db.Uuid
+  createdByUser    User                 @relation("SupplierReturnCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime             @default(now()) @db.Timestamptz
+
+  items            SupplierReturnItem[]
+
+  @@index([grnId])
+  @@index([vendorId])
+  @@map("supplier_returns")
+}
+
+// 60. Supplier Return Line Items
+model SupplierReturnItem {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  returnId         String         @db.Uuid
+  supplierReturn   SupplierReturn @relation(fields: [returnId], references: [id], onDelete: Restrict)
+  partId           String?        @db.Uuid
+  part             Part?          @relation(fields: [partId], references: [id], onDelete: SetNull)
+  quantityReturned Decimal        @db.Decimal(14, 2)
+  unitCost         Decimal        @db.Decimal(14, 2)
+
+  @@index([returnId])
+  @@map("supplier_return_items")
+}
+
+// ====================================================
+// STAGE R1: TECHNICIAN PWA & OFFLINE SYNCHRONIZATION
+// ====================================================
+
+enum SyncBatchStatus {
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+}
+
+enum SyncMutationStatus {
+  QUEUED
+  PROCESSING
+  SYNCED
+  CONFLICT
+  FAILED
+}
+
+enum SyncConflictType {
+  WO_CANCELLED
+  WO_REASSIGNED
+  WO_STATUS_MISMATCH
+  WO_NOT_ACCESSIBLE
+  CHECKLIST_ALREADY_COMPLETED
+  STOCK_UNAVAILABLE
+  STALE_VERSION
+}
+
+// 61. Offline Sync Batch Envelopes
+model OfflineSyncBatch {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batchRef       String          @unique @db.VarChar(50)
+  userId         String          @db.Uuid
+  user           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status         SyncBatchStatus @default(PROCESSING)
+  mutationCount  Int             @default(0)
+  syncedCount    Int             @default(0)
+  conflictCount  Int             @default(0)
+  failedCount    Int             @default(0)
+  processedAt    DateTime?       @db.Timestamptz
+  createdAt      DateTime        @default(now()) @db.Timestamptz
+
+  mutations      OfflineSyncMutation[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("offline_sync_batches")
+}
+
+// 62. Queued Offline Mutations (Database-Level Idempotency)
+model OfflineSyncMutation {
+  id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  batchId                String             @db.Uuid
+  batch                  OfflineSyncBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  userId                 String             @db.Uuid
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  idempotencyKey         String             @db.VarChar(100) // UUIDv7 generated on client
+  actionType             String             @db.VarChar(50)  // WORK_ORDER_STATUS_SHIFT, CHECKLIST_UPDATE, LABOR_LOG, etc.
+  entityType             String             @db.VarChar(50)  // work_order, checklist_item, labor, etc.
+  entityId               String             @db.Uuid
+  payload                Json
+  status                 SyncMutationStatus @default(QUEUED)
+  processingLeaseExpiresAt DateTime?        @db.Timestamptz // Lease timeout for crash recovery
+  errorMessage           String?            @db.Text
+  conflictReason         String?            @db.Text
+  processedAt            DateTime?          @db.Timestamptz
+  createdAt              DateTime           @default(now()) @db.Timestamptz
+
+  conflicts              OfflineSyncConflict[]
+
+  @@unique([userId, idempotencyKey]) // Database-Level Idempotency Guard across concurrent retries
+  @@index([batchId])
+  @@index([status])
+  @@map("offline_sync_mutations")
+}
+
+// 63. Concurrency Conflict Review Ledger
+model OfflineSyncConflict {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mutationId         String              @db.Uuid
+  mutation           OfflineSyncMutation @relation(fields: [mutationId], references: [id], onDelete: Restrict)
+  userId             String              @db.Uuid
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  conflictType       SyncConflictType
+  clientState        Json
+  serverState        Json
+  resolutionStrategy String              @default("SERVER_WINS") @db.VarChar(50)
+  resolvedByUserId   String?             @db.Uuid
+  resolvedByUser     User?               @relation("ConflictResolver", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  resolvedAt         DateTime?           @db.Timestamptz
+  createdAt          DateTime            @default(now()) @db.Timestamptz
+
+  @@index([mutationId])
+  @@index([userId])
+  @@map("offline_sync_conflicts")
+}
+
+// ====================================================
+// STAGE R1: CUSTOMERS, CONTRACTS & SLA MANAGEMENT
+// ====================================================
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  SUSPENDED
+}
+
+enum RateCardCategory {
+  REGULAR
+  OVERTIME
+  EMERGENCY
+  SPECIALIST
+}
+
+enum SlaBreachType {
+  RESPONSE_TIME_BREACH
+  RESOLUTION_TIME_BREACH
+}
+
+// 64. SLA Business Hours Calendar
+model SlaCalendar {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String               @db.VarChar(100)
+  timezone      String               @default("Africa/Accra") @db.VarChar(50)
+  mondayStart   String?              @default("08:00") @db.VarChar(5) // HH:mm format
+  mondayEnd     String?              @default("17:00") @db.VarChar(5)
+  tuesdayStart  String?              @default("08:00") @db.VarChar(5)
+  tuesdayEnd    String?              @default("17:00") @db.VarChar(5)
+  wednesdayStart String?             @default("08:00") @db.VarChar(5)
+  wednesdayEnd  String?              @default("17:00") @db.VarChar(5)
+  thursdayStart String?              @default("08:00") @db.VarChar(5)
+  thursdayEnd   String?              @default("17:00") @db.VarChar(5)
+  fridayStart   String?              @default("08:00") @db.VarChar(5)
+  fridayEnd     String?              @default("17:00") @db.VarChar(5)
+  saturdayStart String?              @db.VarChar(5)
+  saturdayEnd   String?              @db.VarChar(5)
+  sundayStart   String?              @db.VarChar(5)
+  sundayEnd     String?              @db.VarChar(5)
+  version       Int                  @default(1) @db.Integer
+  createdAt     DateTime             @default(now()) @db.Timestamptz
+  updatedAt     DateTime             @updatedAt @db.Timestamptz
+
+  holidays      SlaCalendarHoliday[]
+  policies      SlaPolicy[]
+
+  @@map("sla_calendars")
+}
+
+// 65. SLA Calendar Statutory Holidays
+model SlaCalendarHoliday {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calendarId  String      @db.Uuid
+  calendar    SlaCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  holidayDate DateTime    @db.Date
+  name        String      @db.VarChar(100)
+
+  @@unique([calendarId, holidayDate])
+  @@index([calendarId])
+  @@map("sla_calendar_holidays")
+}
+
+// 66. Master SLA Policy Definitions
+model SlaPolicy {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policyNumber  String      @unique @db.VarChar(50)
+  name         String      @db.VarChar(100)
+  description  String?     @db.Text
+  calendarId   String      @db.Uuid
+  calendar     SlaCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now()) @db.Timestamptz
+  updatedAt    DateTime    @updatedAt @db.Timestamptz
+  deletedAt    DateTime?   @db.Timestamptz
+
+  rules        SlaRule[]
+  contracts    CustomerContract[]
+  workOrders   WorkOrder[]
+
+  @@index([policyNumber])
+  @@map("sla_policies")
+}
+
+// 67. Priority-Based SLA Rules Matrix
+model SlaRule {
+  id                      String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slaPolicyId             String            @db.Uuid
+  slaPolicy               SlaPolicy         @relation(fields: [slaPolicyId], references: [id], onDelete: Cascade)
+  priority                WorkOrderPriority
+  responseTargetMinutes   Int               @db.Integer
+  resolutionTargetMinutes Int               @db.Integer
+  businessHoursOnly       Boolean           @default(true)
+
+  @@unique([slaPolicyId, priority])
+  @@index([slaPolicyId])
+  @@map("sla_rules")
+}
+
+// 68. Customer Maintenance Contracts
+model CustomerContract {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractNumber   String            @unique @db.VarChar(50)
+  customerId       String            @db.Uuid
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  title            String            @db.VarChar(150)
+  description      String?           @db.Text
+  startDate        DateTime          @db.Date
+  endDate          DateTime          @db.Date
+  status           ContractStatus    @default(DRAFT)
+  slaPolicyId      String?           @db.Uuid
+  slaPolicy        SlaPolicy?        @relation(fields: [slaPolicyId], references: [id], onDelete: SetNull)
+  billingFrequency String            @default("MONTHLY") @db.VarChar(30)
+  contractValue    Decimal           @default(0.00) @db.Decimal(14, 2)
+  createdAt        DateTime          @default(now()) @db.Timestamptz
+  updatedAt        DateTime          @updatedAt @db.Timestamptz
+  deletedAt        DateTime?         @db.Timestamptz
+
+  contractSites    CustomerContractSite[]
+  rateCards        ContractRateCard[]
+  workOrders       WorkOrder[]
+  invoices         Invoice[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("customer_contracts")
+}
+
+// 69. Multi-Site Contract Coverage Junction
+model CustomerContractSite {
+  contractId String           @db.Uuid
+  contract   CustomerContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  siteId     String           @db.Uuid
+  site       CustomerSite     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@id([contractId, siteId])
+  @@map("customer_contract_sites")
+}
+
+// 70. Contract Labor Rate Cards
+model ContractRateCard {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contractId   String           @db.Uuid
+  contract     CustomerContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  category     RateCardCategory @default(REGULAR)
+  hourlyRate   Decimal          @db.Decimal(10, 2)
+  createdAt    DateTime         @default(now()) @db.Timestamptz
+
+  @@unique([contractId, category])
+  @@index([contractId])
+  @@map("contract_rate_cards")
+}
+
+// 71. Authoritative SLA Breach Log (Cycle-Aware Immutable History Ledger)
+model SlaBreachLog {
+  id                   String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId          String           @db.Uuid
+  workOrder            WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  slaPolicyId          String           @db.Uuid
+  priority             WorkOrderPriority
+  breachType           SlaBreachType
+  slaCycle             Int              @default(1) @db.Integer
+  targetMinutes        Int              @db.Integer
+  actualElapsedMinutes Int              @db.Integer
+  breachedAt           DateTime         @default(now()) @db.Timestamptz
+
+  @@unique([workOrderId, breachType, slaCycle]) // Cycle-aware uniqueness constraint
+  @@index([workOrderId])
+  @@index([breachedAt])
+  @@map("sla_breach_logs")
+}
+
+// ====================================================
+// STAGE R1: CUSTOMER PORTAL, QUOTES & PUBLIC INTAKE
+// ====================================================
+
+enum QuoteStatus {
+  DRAFT
+  PENDING_MAKER_CHECKER
+  APPROVED_INTERNAL
+  SENT_TO_CUSTOMER
+  CUSTOMER_ACCEPTED
+  CUSTOMER_DECLINED
+  REVISED
+  EXPIRED
+  CANCELLED
+}
+
+enum QuoteDecision {
+  ACCEPTED
+  DECLINED
+}
+
+// 72. Customer Commercial Quotation Master
+model Quote {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteNumber          String            @db.VarChar(50)
+  version              Int               @default(1) @db.Integer
+  customerId           String            @db.Uuid
+  customer             Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  siteId               String?           @db.Uuid
+  site                 CustomerSite?     @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  workRequestId        String?           @db.Uuid
+  workRequest          WorkRequest?      @relation(fields: [workRequestId], references: [id], onDelete: SetNull)
+  workOrderId          String?           @db.Uuid
+  workOrder            WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  title                String            @db.VarChar(150)
+  currency             String            @default("GHS") @db.Char(3)
+  taxScheme            String            @default("GHANA_STATUTORY_2026") @db.VarChar(50)
+  taxInclusive         Boolean           @default(false)
+  subtotal             Decimal           @default(0.00) @db.Decimal(14, 2)
+  vatRate              Decimal           @default(0.15) @db.Decimal(5, 4)
+  vatAmount            Decimal           @default(0.00) @db.Decimal(14, 2)
+  nhilRate             Decimal           @default(0.025) @db.Decimal(5, 4)
+  nhilAmount           Decimal           @default(0.00) @db.Decimal(14, 2)
+  getFundRate          Decimal           @default(0.025) @db.Decimal(5, 4)
+  getFundAmount        Decimal           @default(0.00) @db.Decimal(14, 2)
+  totalAmount          Decimal           @default(0.00) @db.Decimal(14, 2)
+  status               QuoteStatus       @default(DRAFT)
+  validUntil           DateTime?         @db.Date
+  createdByUserId      String            @db.Uuid
+  createdByUser        User              @relation("QuoteCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedByUserId     String?           @db.Uuid
+  approvedByUser       User?             @relation("QuoteInternalApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvalRequestId    String?           @db.Uuid
+  approvalRequest      ApprovalRequest?  @relation(fields: [approvalRequestId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now()) @db.Timestamptz
+  updatedAt            DateTime          @updatedAt @db.Timestamptz
+  deletedAt            DateTime?         @db.Timestamptz
+
+  lines                QuoteLine[]
+  versionHistory       QuoteVersionHistory[]
+  decisionLogs         QuoteDecisionLog[]
+  invoices             Invoice[]
+
+  @@unique([quoteNumber, version]) // Enforces unique quote versioning at database level
+  @@index([customerId])
+  @@index([workOrderId])
+  @@index([status])
+  @@map("quotes")
+}
+
+// 73. Quote Line Items (BOQ)
+model QuoteLine {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteId         String      @db.Uuid
+  quote           Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  partId          String?     @db.Uuid
+  part            Part?       @relation(fields: [partId], references: [id], onDelete: SetNull)
+  description     String      @db.VarChar(200)
+  quantity        Decimal     @db.Decimal(14, 2)
+  unitPrice       Decimal     @db.Decimal(14, 2)
+  discountAmount  Decimal     @default(0.00) @db.Decimal(14, 2)
+  lineTotal       Decimal     @db.Decimal(14, 2)
+
+  @@index([quoteId])
+  @@map("quote_lines")
+}
+
+// 74. Quote Version History Ledger
+model QuoteVersionHistory {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteId         String      @db.Uuid
+  quote           Quote       @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  version         Int         @db.Integer
+  subtotal        Decimal     @db.Decimal(14, 2)
+  totalAmount     Decimal     @db.Decimal(14, 2)
+  snapshotData    Json
+  revisedByUserId String      @db.Uuid
+  revisedByUser   User        @relation(fields: [revisedByUserId], references: [id], onDelete: Restrict)
+  createdAt       DateTime    @default(now()) @db.Timestamptz
+
+  @@index([quoteId])
+  @@map("quote_version_history")
+}
+
+// 75. Immutable Customer Decision History Log
+model QuoteDecisionLog {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quoteId            String           @db.Uuid
+  quote              Quote            @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  version            Int              @db.Integer
+  customerContactId  String           @db.Uuid
+  customerContact    CustomerContact  @relation("QuoteCustomerDecider", fields: [customerContactId], references: [id], onDelete: Restrict)
+  decision           QuoteDecision    // ACCEPTED | DECLINED
+  decisionNotes      String?          @db.Text
+  ipAddress          String           @db.VarChar(45)
+  decidedAt          DateTime         @default(now()) @db.Timestamptz
+
+  @@unique([quoteId, version]) // Database-level idempotency guard: 1 decision per version
+  @@index([quoteId])
+  @@index([customerContactId])
+  @@map("quote_decision_logs")
+}
+
+// 76. Customer-Visible Work Order Comments
+model WorkOrderComment {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId        String           @db.Uuid
+  workOrder          WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  authorUserId       String?          @db.Uuid
+  authorUser         User?            @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  authorContactId    String?          @db.Uuid
+  authorContact      CustomerContact? @relation(fields: [authorContactId], references: [id], onDelete: Restrict)
+  commentText        String           @db.Text
+  isCustomerVisible  Boolean          @default(false)
+  createdAt          DateTime         @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@index([isCustomerVisible])
+  @@map("work_order_comments")
+}
+
+// 77. Customer-Visible Work Order Attachments
+model WorkOrderAttachment {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workOrderId        String           @db.Uuid
+  workOrder          WorkOrder        @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  uploaderUserId     String?          @db.Uuid
+  uploaderUser       User?            @relation(fields: [uploaderUserId], references: [id], onDelete: Restrict)
+  uploaderContactId  String?          @db.Uuid
+  uploaderContact    CustomerContact? @relation(fields: [uploaderContactId], references: [id], onDelete: Restrict)
+  fileName           String           @db.VarChar(200)
+  fileUrl            String           @db.Text
+  fileSize           Int              @db.Integer
+  mimeType           String           @db.VarChar(100)
+  isCustomerVisible  Boolean          @default(false)
+  createdAt          DateTime         @default(now()) @db.Timestamptz
+
+  @@index([workOrderId])
+  @@index([isCustomerVisible])
+  @@map("work_order_attachments")
+}
+
+// 78. Unauthenticated Public / QR Request Intake
+model PublicRequestIntake {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId             String          @db.Uuid
+  site               CustomerSite    @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  assetId            String?         @db.Uuid
+  asset              Asset?          @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  idempotencyKey     String?         @unique @db.VarChar(100)
+  requesterName      String          @db.VarChar(100)
+  requesterEmail     String          @db.VarChar(150)
+  requesterPhone     String          @db.VarChar(50)
+  description        String          @db.Text
+  photoUrl           String?         @db.Text
+  status             String          @default("RECEIVED") @db.VarChar(30) // RECEIVED | PROCESSED | SPAM
+  processedRequestId String?         @db.Uuid
+  clientIp           String          @db.VarChar(45)
+  createdAt          DateTime        @default(now()) @db.Timestamptz
+
+  @@index([siteId])
+  @@index([status])
+  @@map("public_request_intake")
+}
+
+// ====================================================
+// STAGE R1: INVOICING & COMMERCIAL BILLING ENGINE
+// ====================================================
+
+enum InvoiceType {
+  JOB_INVOICE
+  CONSOLIDATED_INVOICE
+  CONTRACT_INVOICE
+  PROFORMA_INVOICE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CHEQUE
+  MOBILE_MONEY
+  CASH
+  CREDIT_CARD
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ISSUED
+  APPLIED
+  CANCELLED
+}
+
+// 79. Atomic Sequential Counter for Gapless Document Numbering
+model NumberSequence {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prefix       String   @unique @db.VarChar(20) // e.g. "INV-2026", "CN-2026", "PAY-2026"
+  nextValue    Int      @default(1) @db.Integer
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  @@map("number_sequences")
+}
+
+// 80. Master Commercial Invoices
+model Invoice {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  draftReference       String            @unique @db.VarChar(50)
+  invoiceNumber        String?           @unique @db.VarChar(50) // Allocated ONLY upon APPROVAL
+  version              Int               @default(1) @db.Integer
+  payloadHash          String?           @db.VarChar(64)
+  invoiceType          InvoiceType       @default(JOB_INVOICE)
+  customerId           String            @db.Uuid
+  customer             Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  siteId               String?           @db.Uuid
+  site                 CustomerSite?     @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  contractId           String?           @db.Uuid
+  contract             CustomerContract? @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  quoteId              String?           @db.Uuid
+  quote                Quote?            @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  workOrderId          String?           @db.Uuid
+  workOrder            WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  issueDate            DateTime          @default(now()) @db.Date
+  dueDate              DateTime          @db.Date
+  sentAt               DateTime?         @db.Timestamptz
+  currency             String            @default("GHS") @db.Char(3)
+  taxScheme            String            @default("GHANA_STATUTORY_2026") @db.VarChar(50)
+  taxInclusive         Boolean           @default(false)
+  subtotal             Decimal           @default(0.00) @db.Decimal(14, 2)
+  vatRate              Decimal           @default(0.15) @db.Decimal(5, 4)
+  vatAmount            Decimal           @default(0.00) @db.Decimal(14, 2)
+  nhilRate             Decimal           @default(0.025) @db.Decimal(5, 4)
+  nhilAmount           Decimal           @default(0.00) @db.Decimal(14, 2)
+  getFundRate          Decimal           @default(0.025) @db.Decimal(5, 4)
+  getFundAmount        Decimal           @default(0.00) @db.Decimal(14, 2)
+  totalAmount          Decimal           @default(0.00) @db.Decimal(14, 2)
+  paidAmount           Decimal           @default(0.00) @db.Decimal(14, 2)
+  creditedAmount       Decimal           @default(0.00) @db.Decimal(14, 2)
+  balanceDue           Decimal           @default(0.00) @db.Decimal(14, 2)
+  status               InvoiceStatus     @default(DRAFT)
+  createdByUserId      String            @db.Uuid
+  createdByUser        User              @relation("InvoiceCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  approvedByUserId     String?           @db.Uuid
+  approvedByUser       User?             @relation("InvoiceApprover", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvalRequestId    String?           @db.Uuid
+  approvalRequest      ApprovalRequest?  @relation(fields: [approvalRequestId], references: [id], onDelete: Restrict)
+  createdAt            DateTime          @default(now()) @db.Timestamptz
+  updatedAt            DateTime          @updatedAt @db.Timestamptz
+  deletedAt            DateTime?         @db.Timestamptz
+
+  lines                InvoiceLine[]
+  allocations          PaymentAllocation[]
+  creditNotes          CreditNote[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// 81. Invoice Line Items
+model InvoiceLine {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId       String      @db.Uuid
+  invoice         Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  workOrderId     String?     @db.Uuid
+  workOrder       WorkOrder?  @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  partId          String?     @db.Uuid
+  part            Part?       @relation(fields: [partId], references: [id], onDelete: SetNull)
+  description     String      @db.VarChar(200)
+  quantity        Decimal     @db.Decimal(14, 2)
+  unitPrice       Decimal     @db.Decimal(14, 2)
+  discountAmount  Decimal     @default(0.00) @db.Decimal(14, 2)
+  lineTotal       Decimal     @db.Decimal(14, 2)
+
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+// 82. Customer Payment Remittances
+model Payment {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentNumber     String            @unique @db.VarChar(50)
+  customerId        String            @db.Uuid
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  amount            Decimal           @db.Decimal(14, 2)
+  unallocatedAmount Decimal           @db.Decimal(14, 2)
+  paymentMethod     PaymentMethod     @default(BANK_TRANSFER)
+  referenceNumber   String?           @db.VarChar(100) // Cheque # / MoMo Ref / Txn Hash
+  paymentDate       DateTime          @default(now()) @db.Date
+  notes             String?           @db.Text
+  recordedByUserId  String            @db.Uuid
+  recordedByUser    User              @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  createdAt         DateTime          @default(now()) @db.Timestamptz
+
+  allocations       PaymentAllocation[]
+  reversals         PaymentReversal[]
+
+  @@index([customerId])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+// 83. Payment Allocation Ledger (Remittance to Invoice)
+model PaymentAllocation {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId        String   @db.Uuid
+  payment          Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoiceId        String   @db.Uuid
+  invoice          Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amountAllocated  Decimal  @db.Decimal(14, 2)
+  allocatedAt      DateTime @default(now()) @db.Timestamptz
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
+}
+
+// 84. Payment Reversal Ledger
+model PaymentReversal {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId        String   @db.Uuid
+  payment          Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  amountReversed   Decimal  @db.Decimal(14, 2)
+  reason           String   @db.Text
+  reversedAt       DateTime @default(now()) @db.Timestamptz
+
+  @@index([paymentId])
+  @@map("payment_reversals")
+}
+
+// 85. Credit Notes
+model CreditNote {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creditNoteNumber String           @unique @db.VarChar(50)
+  invoiceId        String           @db.Uuid
+  invoice          Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customerId       String           @db.Uuid
+  customer         Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  reason           String           @db.Text
+  subtotal         Decimal          @db.Decimal(14, 2)
+  vatAmount        Decimal          @default(0.00) @db.Decimal(14, 2)
+  nhilAmount       Decimal          @default(0.00) @db.Decimal(14, 2)
+  getFundAmount    Decimal          @default(0.00) @db.Decimal(14, 2)
+  totalAmount      Decimal          @db.Decimal(14, 2)
+  status           CreditNoteStatus @default(DRAFT)
+  approvalRequestId String?         @db.Uuid
+  approvalRequest  ApprovalRequest? @relation(fields: [approvalRequestId], references: [id], onDelete: Restrict)
+  issuedByUserId   String           @db.Uuid
+  issuedByUser     User             @relation(fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime         @default(now()) @db.Timestamptz
+
+  lines            CreditNoteLine[]
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@map("credit_notes")
+}
+
+// 86. Credit Note Line Items
+model CreditNoteLine {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creditNoteId    String     @db.Uuid
+  creditNote      CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  description     String     @db.VarChar(200)
+  quantity        Decimal    @db.Decimal(14, 2)
+  unitPrice       Decimal    @db.Decimal(14, 2)
+  lineTotal       Decimal    @db.Decimal(14, 2)
+
+  @@index([creditNoteId])
+  @@map("credit_note_lines")
+}
+
+enum NotificationRealm {
+  STAFF
+  CUSTOMER
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum NotificationAttemptStatus {
+  STARTED
+  SENT
+  FAILED
+}
+
+model Notification {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  realm              NotificationRealm
+  recipientUserId    String?           @db.Uuid
+  recipientUser      User?             @relation("StaffNotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientContactId String?           @db.Uuid
+  recipientContact   CustomerContact?  @relation("PortalNotificationRecipient", fields: [recipientContactId], references: [id], onDelete: Cascade)
+  customerId         String?           @db.Uuid
+  siteId             String?           @db.Uuid
+  branchId           String?           @db.Uuid
+  departmentId       String?           @db.Uuid
+  eventType          String            @db.VarChar(60)
+  idempotencyKey     String            @unique @db.VarChar(200)
+  title              String            @db.VarChar(180)
+  body               String            @db.Text
+  link               String?           @db.VarChar(500)
+  emailSubject       String            @db.VarChar(180)
+  emailBody          String            @db.Text
+  data               Json              @default("{}")
+  inAppEnabled       Boolean           @default(true)
+  createdAt          DateTime          @default(now()) @db.Timestamptz
+  readAt             DateTime?         @db.Timestamptz
+  emailDelivery      NotificationEmailDelivery?
+
+  @@index([recipientUserId, readAt, createdAt])
+  @@index([recipientContactId, readAt, createdAt])
+  @@index([customerId, siteId])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientUserId    String?          @db.Uuid
+  recipientUser      User?            @relation("StaffNotificationPreference", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientContactId String?          @db.Uuid
+  recipientContact   CustomerContact? @relation("PortalNotificationPreference", fields: [recipientContactId], references: [id], onDelete: Cascade)
+  eventType          String           @db.VarChar(60)
+  inAppEnabled       Boolean          @default(true)
+  emailEnabled       Boolean          @default(true)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz
+
+  @@unique([recipientUserId, eventType])
+  @@unique([recipientContactId, eventType])
+  @@map("notification_preferences")
+}
+
+model NotificationTemplate {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  realm             NotificationRealm
+  eventType         String            @db.VarChar(60)
+  titleTemplate     String            @db.VarChar(180)
+  bodyTemplate      String            @db.Text
+  emailSubject      String            @db.VarChar(180)
+  emailBody         String            @db.Text
+  isActive          Boolean           @default(true)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz
+
+  @@unique([realm, eventType])
+  @@map("notification_templates")
+}
+
+model NotificationEmailDelivery {
+  id                String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  notificationId    String                     @unique @db.Uuid
+  notification      Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  status            NotificationDeliveryStatus @default(PENDING)
+  attemptCount      Int                        @default(0)
+  maxAttempts       Int                        @default(5)
+  nextAttemptAt     DateTime                   @default(now()) @db.Timestamptz
+  lockedAt          DateTime?                  @db.Timestamptz
+  sentAt            DateTime?                  @db.Timestamptz
+  lastError         String?                    @db.Text
+  providerMessageId String?                    @db.VarChar(255)
+  createdAt         DateTime                   @default(now()) @db.Timestamptz
+  updatedAt         DateTime                   @updatedAt @db.Timestamptz
+  attempts          NotificationDeliveryAttempt[]
+
+  @@index([status, nextAttemptAt])
+  @@map("notification_email_deliveries")
+}
+
+model NotificationDeliveryAttempt {
+  id                String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryId        String                    @db.Uuid
+  delivery          NotificationEmailDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  attemptNumber     Int
+  status            NotificationAttemptStatus @default(STARTED)
+  attemptedAt       DateTime                  @default(now()) @db.Timestamptz
+  completedAt       DateTime?                 @db.Timestamptz
+  error             String?                   @db.Text
+  providerMessageId String?                   @db.VarChar(255)
+
+  @@unique([deliveryId, attemptNumber])
+  @@index([deliveryId, attemptedAt])
+  @@map("notification_delivery_attempts")
+}
+
+// 87. Facility Mode Internal Departmental Recharges
+model InternalRecharge {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rechargeNumber   String      @unique @db.VarChar(50)
+  workOrderId      String      @db.Uuid
+  workOrder        WorkOrder   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  fromDepartmentId String      @db.Uuid
+  fromDepartment   Department  @relation("RechargeFromDept", fields: [fromDepartmentId], references: [id], onDelete: Restrict)
+  toDepartmentId   String      @db.Uuid
+  toDepartment     Department  @relation("RechargeToDept", fields: [toDepartmentId], references: [id], onDelete: Restrict)
+  amount           Decimal     @db.Decimal(14, 2)
+  description      String      @db.Text
+  rechargeDate     DateTime    @default(now()) @db.Date
+  recordedByUserId String      @db.Uuid
+  recordedByUser   User        @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
+  createdAt        DateTime    @default(now()) @db.Timestamptz
+
+  @@unique([workOrderId]) // Enforces exactly one internal recharge per work order
+  @@index([workOrderId])
+  @@index([fromDepartmentId])
+  @@index([toDepartmentId])
+  @@map("internal_recharges")
+}
+
+// 88. Import Batch & History Ledger
+model ImportBatch {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType    String    @db.VarChar(50)
+  status        String    @db.VarChar(30)
+  fileName      String    @db.VarChar(255)
+  contentHash   String?   @db.VarChar(64)
+  mappingHash   String?   @db.VarChar(64)
+  workerId      String?   @db.VarChar(100)
+  startedAt     DateTime? @db.Timestamptz
+  expiresAt     DateTime? @db.Timestamptz
+  totalRows     Int       @default(0)
+  successRows   Int       @default(0)
+  errorRows     Int       @default(0)
+  actorUserId   String    @db.Uuid
+  actorUser     User      @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  summaryJson   Json?
+  errorsJson    Json?
+  mappingJson   Json?
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
+
+  @@unique([contentHash, entityType, mappingHash])
+  @@index([entityType])
+  @@index([actorUserId])
+  @@map("import_batches")
+}
+
+// 89. Distributed Rate Limiting
+model RateLimit {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key             String   @unique @db.VarChar(200)
+  hitCount        Int      @default(1)
+  windowExpiresAt DateTime @db.Timestamptz
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  @@index([windowExpiresAt])
+  @@map("rate_limits")
+}
+
+// 90. Centralized Background Jobs & Execution Leases
+model BackgroundJob {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobType         String    @db.VarChar(60)
+  status          String    @db.VarChar(30) @default("PENDING")
+  payload         Json      @default("{}")
+  result          Json?
+  retryCount      Int       @default(0)
+  maxRetries      Int       @default(5)
+  workerId        String?   @db.VarChar(100)
+  startedAt       DateTime? @db.Timestamptz
+  expiresAt       DateTime? @db.Timestamptz
+  completedAt     DateTime? @db.Timestamptz
+  lastError       String?   @db.Text
+  idempotencyKey  String    @unique @db.VarChar(200)
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+
+  @@index([status, jobType])
+  @@index([status, jobType, expiresAt, createdAt])
+  @@index([expiresAt])
+  @@map("background_jobs")
+}
+
+// 91. Background Workers & Heartbeat Monitoring
+model BackgroundWorker {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workerId        String    @unique @db.VarChar(100)
+  status          String    @db.VarChar(30) @default("ACTIVE")
+  currentJobId    String?   @db.Uuid
+  lastHeartbeatAt DateTime  @default(now()) @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+
+  @@map("background_workers")
+}
+
