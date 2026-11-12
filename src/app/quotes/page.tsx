@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { DollarSign, Plus, Check, ShieldCheck, ArrowRight } from 'lucide-react';
+import { DollarSign, Plus, Check } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
+import { StatusBadge } from '@/src/components/ui/StatusBadge';
 
 export default function QuotesManagementPage() {
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -74,39 +77,41 @@ export default function QuotesManagementPage() {
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <DollarSign className="w-7 h-7 text-brand-orange" />
-            Commercial Quotations Management
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Prepare customer quotations, line items, Ghana statutory taxes (VAT 15%, NHIL 2.5%, GETFund 2.5%), and internal maker-checker approvals.
-          </p>
-        </div>
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
 
-        <button
-          onClick={() => setIsFormOpen(!isFormOpen)}
-          className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {isFormOpen ? 'Close Form' : 'New Quote'}
-        </button>
-      </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Quotes"
+        eyebrowIcon={DollarSign}
+        title="Commercial Quotations"
+        description="Prepare customer quotations, line items, Ghana statutory taxes (VAT 15%, NHIL 2.5%, GETFund 2.5%), and internal maker-checker approvals."
+        actions={
+          <button
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {isFormOpen ? 'Close Form' : 'New Quote'}
+          </button>
+        }
+      />
 
       {isFormOpen && (
-        <form onSubmit={handleCreateQuote} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
-          <h2 className="text-base font-semibold text-white">Create Commercial Quotation</h2>
+        <form onSubmit={handleCreateQuote} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">Create Commercial Quotation</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Target Customer</label>
+              <label className={labelClass}>Target Customer</label>
               <select
                 required
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               >
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} ({c.customerNumber})</option>
@@ -115,32 +120,32 @@ export default function QuotesManagementPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Quote Title</label>
+              <label className={labelClass}>Quote Title</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Jaw Crusher Overhaul & Motor Replacement"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">BOQ Item Description</label>
+              <label className={labelClass}>BOQ Item Description</label>
               <input
                 type="text"
                 required
                 value={itemDesc}
                 onChange={(e) => setItemDesc(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Quantity</label>
+              <label className={labelClass}>Quantity</label>
               <input
                 type="number"
                 step="1"
@@ -148,73 +153,83 @@ export default function QuotesManagementPage() {
                 required
                 value={itemQty}
                 onChange={(e) => setItemQty(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Unit Price (GHS)</label>
+              <label className={labelClass}>Unit Price (GHS)</label>
               <input
                 type="number"
                 step="0.01"
                 required
                 value={itemPrice}
                 onChange={(e) => setItemPrice(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {submitting ? 'Creating Quote...' : 'Create Draft Quote'}
+              <Check className="h-4 w-4" />
+              {submitting ? 'Creating Quote…' : 'Create Draft Quote'}
             </button>
           </div>
         </form>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading quotations...</div>
+          <LoadingSkeleton rows={6} columns={8} />
         ) : quotes.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No quotations created yet.</div>
+          <EmptyState
+            icon={DollarSign}
+            title="No quotations created yet"
+            description="Create your first commercial quotation for a customer."
+            action={{ label: 'New Quote', onClick: () => setIsFormOpen(true) }}
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">Quote #</th>
-                  <th className="p-3.5">Version</th>
-                  <th className="p-3.5">Customer</th>
-                  <th className="p-3.5">Title</th>
-                  <th className="p-3.5">Subtotal</th>
-                  <th className="p-3.5">Taxes (VAT+NHIL+GETFund)</th>
-                  <th className="p-3.5">Total (GHS)</th>
-                  <th className="p-3.5">Status</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className={thClass}>Quote #</th>
+                  <th className={thClass}>Version</th>
+                  <th className={thClass}>Customer</th>
+                  <th className={thClass}>Title</th>
+                  <th className={thClass}>Subtotal</th>
+                  <th className={thClass}>Taxes</th>
+                  <th className={thClass}>Total (GHS)</th>
+                  <th className={thClass}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {quotes.map((q) => {
                   const totalTax = parseFloat(q.vatAmount ?? 0) + parseFloat(q.nhilAmount ?? 0) + parseFloat(q.getFundAmount ?? 0);
 
                   return (
-                    <tr key={q.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3.5 font-mono font-medium text-brand-orange">{q.quoteNumber}</td>
-                      <td className="p-3.5 font-mono text-slate-300">v{q.version}</td>
-                      <td className="p-3.5 font-medium text-white">{q.customer?.name}</td>
-                      <td className="p-3.5 text-slate-300">{q.title}</td>
-                      <td className="p-3.5 font-mono text-slate-300">GHS {q.subtotal}</td>
-                      <td className="p-3.5 font-mono text-slate-400">GHS {totalTax.toFixed(2)}</td>
-                      <td className="p-3.5 font-mono font-bold text-emerald-400">GHS {q.totalAmount}</td>
-                      <td className="p-3.5">
-                        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-800 text-slate-300">
-                          {q.status}
-                        </span>
+                    <tr key={q.id} className="hover:bg-slate-50 transition-colors">
+                      <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>{q.quoteNumber}</td>
+                      <td className={`${tdClass} font-mono text-slate-500`}>v{q.version}</td>
+                      <td className={`${tdClass} font-medium text-slate-800`}>{q.customer?.name}</td>
+                      <td className={`${tdClass} text-slate-600`}>{q.title}</td>
+                      <td className={`${tdClass} font-mono text-slate-600`}>GHS {q.subtotal}</td>
+                      <td className={`${tdClass} font-mono text-slate-500`}>GHS {totalTax.toFixed(2)}</td>
+                      <td className={`${tdClass} font-mono font-bold text-emerald-700`}>GHS {q.totalAmount}</td>
+                      <td className={tdClass}>
+                        <StatusBadge status={q.status} />
                       </td>
                     </tr>
                   );

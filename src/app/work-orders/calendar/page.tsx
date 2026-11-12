@@ -2,9 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Calendar as CalendarIcon, Clock, User, Wrench } from 'lucide-react';
+import { Calendar as CalendarIcon, User, Wrench } from 'lucide-react';
 import { WorkOrderStatusBadge } from '@/src/components/work-orders/WorkOrderStatusBadge';
 import { WorkOrderPriorityBadge } from '@/src/components/work-orders/WorkOrderPriorityBadge';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function WorkOrderSchedulePage() {
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -19,26 +22,26 @@ export default function WorkOrderSchedulePage() {
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div className="space-y-1">
-          <Link href="/work-orders" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Work Orders List
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6 text-brand-orange" /> Work Order Schedule & Technician Workload
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Work Orders"
+        eyebrowIcon={CalendarIcon}
+        title="Work Order Schedule & Technician Workload"
+        description="View scheduled work orders and technician assignments at a glance."
+        breadcrumbs={[
+          { label: 'Work Orders', href: '/work-orders' },
+          { label: 'Calendar' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Workload Summary */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Technician Workload Summary</h3>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Technician Workload</h3>
           {loading ? (
-            <div className="text-xs text-slate-500 py-4">Loading workload metrics...</div>
+            <LoadingSkeleton rows={4} columns={2} />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {Array.from(
                 new Set(workOrders.map((w) => w.assignedUser?.name).filter(Boolean))
               ).map((techName) => {
@@ -46,64 +49,71 @@ export default function WorkOrderSchedulePage() {
                 const activeOrders = techOrders.filter((w) => w.status === 'ASSIGNED' || w.status === 'IN_PROGRESS');
 
                 return (
-                  <div key={techName as string} className="bg-slate-800/50 p-3 rounded-lg flex items-center justify-between text-xs border border-slate-800">
+                  <div
+                    key={techName as string}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs"
+                  >
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-brand-orange" />
-                      <span className="font-medium text-white">{techName as string}</span>
+                      <User className="h-4 w-4 text-[#FF5B00]" />
+                      <span className="font-medium text-slate-700">{techName as string}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-semibold">
+                      <span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
                         {activeOrders.length} active
                       </span>
-                      <span className="text-slate-500">({techOrders.length} total)</span>
+                      <span className="text-slate-400">({techOrders.length} total)</span>
                     </div>
                   </div>
                 );
               })}
+              {workOrders.filter((w) => w.assignedUser).length === 0 && (
+                <p className="py-4 text-center text-xs text-slate-400">No technicians assigned yet.</p>
+              )}
             </div>
           )}
         </div>
 
         {/* Schedule Timeline */}
-        <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Upcoming & Scheduled Maintenance</h3>
+        <div className="md:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Upcoming & Scheduled Maintenance</h3>
           {loading ? (
-            <div className="text-xs text-slate-500 py-8 text-center">Loading schedule timeline...</div>
+            <LoadingSkeleton rows={6} columns={3} />
           ) : workOrders.length === 0 ? (
-            <div className="text-xs text-slate-500 py-8 text-center">No scheduled work orders.</div>
+            <EmptyState icon={CalendarIcon} title="No scheduled work orders" description="Create work orders to populate the schedule." />
           ) : (
             <div className="space-y-3">
               {workOrders.map((wo) => (
-                <div key={wo.id} className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-brand-orange">{wo.workOrderNumber}</span>
+                <div
+                  key={wo.id}
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-bold text-[#FF5B00] text-xs">{wo.workOrderNumber}</span>
                       <WorkOrderStatusBadge status={wo.status} size="sm" />
                       <WorkOrderPriorityBadge priority={wo.priority} size="sm" />
                     </div>
-                    <div className="font-medium text-sm text-white">{wo.title}</div>
-                    <div className="text-slate-400 flex items-center gap-3">
+                    <div className="font-medium text-sm text-slate-800">{wo.title}</div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       {wo.asset && (
                         <span className="flex items-center gap-1">
-                          <Wrench className="w-3 h-3 text-slate-500" /> {wo.asset.name}
+                          <Wrench className="h-3 w-3" /> {wo.asset.name}
                         </span>
                       )}
                       {wo.assignedUser && (
                         <span className="flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-500" /> {wo.assignedUser.name}
+                          <User className="h-3 w-3" /> {wo.assignedUser.name}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <Link
-                      href={`/work-orders/${wo.id}`}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg transition-colors inline-block"
-                    >
-                      Inspect
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/work-orders/${wo.id}`}
+                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors shrink-0"
+                  >
+                    Inspect
+                  </Link>
                 </div>
               ))}
             </div>

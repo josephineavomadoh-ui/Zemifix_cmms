@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { AlertTriangle, Clock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function SlaBreachesPage() {
   const [breachLogs, setBreachLogs] = useState<any[]>([]);
@@ -42,61 +44,72 @@ export default function SlaBreachesPage() {
     }
   };
 
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <AlertTriangle className="w-7 h-7 text-rose-500" />
-            Authoritative SLA Breach Ledger
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Cycle-aware immutable SLA breach history ledger and compliance audit records.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="SLA"
+        eyebrowIcon={AlertTriangle}
+        title="SLA Breach Ledger"
+        description="Cycle-aware immutable SLA breach history ledger and compliance audit records."
+        actions={
+          <button
+            onClick={handleEvaluateNow}
+            disabled={evaluating}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${evaluating ? 'animate-spin text-[#FF5B00]' : 'text-slate-400'}`} />
+            {evaluating ? 'Evaluating…' : 'Run SLA Check'}
+          </button>
+        }
+      />
 
-        <button
-          onClick={handleEvaluateNow}
-          disabled={evaluating}
-          className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${evaluating ? 'animate-spin text-brand-orange' : ''}`} />
-          {evaluating ? 'Evaluating...' : 'Run SLA Check'}
-        </button>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading SLA breach records...</div>
+          <LoadingSkeleton rows={6} columns={7} />
         ) : breachLogs.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No SLA breaches recorded. Excellent compliance!</div>
+          <EmptyState
+            icon={AlertTriangle}
+            title="No SLA breaches recorded"
+            description="Excellent compliance! All work orders are within their SLA targets."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">Work Order</th>
-                  <th className="p-3.5">Breach Classification</th>
-                  <th className="p-3.5">Cycle</th>
-                  <th className="p-3.5">Priority</th>
-                  <th className="p-3.5">Target (Mins)</th>
-                  <th className="p-3.5">Actual Elapsed (Mins)</th>
-                  <th className="p-3.5">Breached At</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className={thClass}>Work Order</th>
+                  <th className={thClass}>Breach Classification</th>
+                  <th className={thClass}>Cycle</th>
+                  <th className={thClass}>Priority</th>
+                  <th className={thClass}>Target (Mins)</th>
+                  <th className={thClass}>Actual Elapsed (Mins)</th>
+                  <th className={thClass}>Breached At</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {breachLogs.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-medium text-brand-orange">
-                      {b.workOrder?.workOrderNumber}
-                      <div className="font-sans text-slate-300 font-normal">{b.workOrder?.title}</div>
+                  <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                    <td className={tdClass}>
+                      <div className="font-mono font-medium text-[#FF5B00]">{b.workOrder?.workOrderNumber}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{b.workOrder?.title}</div>
                     </td>
-                    <td className="p-3.5 font-semibold text-rose-400">{b.breachType}</td>
-                    <td className="p-3.5 font-mono text-slate-300">{b.slaCycle}</td>
-                    <td className="p-3.5 font-mono font-bold text-amber-400">{b.priority}</td>
-                    <td className="p-3.5 font-mono text-slate-400">{b.targetMinutes}m</td>
-                    <td className="p-3.5 font-mono font-bold text-rose-400">{b.actualElapsedMinutes}m</td>
-                    <td className="p-3.5 text-slate-500">{new Date(b.breachedAt).toLocaleString()}</td>
+                    <td className={tdClass}>
+                      <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                        {b.breachType}
+                      </span>
+                    </td>
+                    <td className={`${tdClass} font-mono text-slate-600`}>{b.slaCycle}</td>
+                    <td className={tdClass}>
+                      <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                        {b.priority}
+                      </span>
+                    </td>
+                    <td className={`${tdClass} font-mono text-slate-600`}>{b.targetMinutes}m</td>
+                    <td className={`${tdClass} font-mono font-bold text-rose-700`}>{b.actualElapsedMinutes}m</td>
+                    <td className={`${tdClass} text-slate-500`}>{new Date(b.breachedAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ClipboardList, Check } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Check, AlertCircle } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
 
 export default function CreateWorkOrderPage() {
   const router = useRouter();
@@ -57,63 +58,71 @@ export default function CreateWorkOrderPage() {
     }
   };
 
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1';
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/work-orders" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Work Orders List
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Work Orders"
+        eyebrowIcon={ClipboardList}
+        title="Create Work Order"
+        description="Log a new corrective, preventive, or emergency maintenance task."
+        breadcrumbs={[
+          { label: 'Work Orders', href: '/work-orders' },
+          { label: 'New Work Order' },
+        ]}
+        actions={
+          <Link
+            href="/work-orders"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-brand-orange" /> Create Work Order
-          </h1>
-        </div>
-      </div>
+        }
+      />
 
       {error && (
-        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Work Order Title
-          </label>
+          <label className={labelClass}>Work Order Title</label>
           <input
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Replace Worn Drive Belt on Conveyor A"
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Detailed Description & Work Scope
-          </label>
+          <label className={labelClass}>Detailed Description & Work Scope</label>
           <textarea
             required
             rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide comprehensive details, safety precautions, and required tools..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Maintenance Type
-            </label>
+            <label className={labelClass}>Maintenance Type</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             >
               <option value="CORRECTIVE">Corrective Maintenance</option>
               <option value="PREVENTIVE">Preventive Maintenance</option>
@@ -124,13 +133,11 @@ export default function CreateWorkOrderPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Priority Level
-            </label>
+            <label className={labelClass}>Priority Level</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             >
               <option value="LOW">Low Priority</option>
               <option value="MEDIUM">Medium Priority</option>
@@ -142,13 +149,11 @@ export default function CreateWorkOrderPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Affected Equipment / Asset (Optional)
-          </label>
+          <label className={labelClass}>Affected Equipment / Asset (Optional)</label>
           <select
             value={assetId}
             onChange={(e) => setAssetId(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           >
             <option value="">None (Facility / General Location)</option>
             {assets.map((a) => (
@@ -161,46 +166,42 @@ export default function CreateWorkOrderPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Estimated Labor Hours
-            </label>
+            <label className={labelClass}>Estimated Labor Hours</label>
             <input
               type="number"
               step="0.5"
               value={estimatedHours}
               onChange={(e) => setEstimatedHours(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Estimated Cost (GHS)
-            </label>
+            <label className={labelClass}>Estimated Cost (GHS)</label>
             <input
               type="number"
               step="10"
               value={estimatedCost}
               onChange={(e) => setEstimatedCost(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
           <Link
             href="/work-orders"
-            className="px-4 py-2 text-sm text-slate-400 hover:text-white"
+            className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={loading}
-            className="px-5 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white font-medium text-sm rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#F95700] disabled:opacity-50"
           >
-            <Check className="w-4 h-4" />
-            {loading ? 'Creating Work Order...' : 'Create Work Order'}
+            <Check className="h-4 w-4" />
+            {loading ? 'Creating Work Order…' : 'Create Work Order'}
           </button>
         </div>
       </form>

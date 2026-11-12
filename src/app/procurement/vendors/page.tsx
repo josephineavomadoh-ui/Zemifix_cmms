@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, Plus, Check } from 'lucide-react';
+import { Users, Check } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
+import { StatusBadge } from '@/src/components/ui/StatusBadge';
 
 export default function VendorsPage() {
   const [vendors, setVendors] = useState<any[]>([]);
@@ -65,132 +69,148 @@ export default function VendorsPage() {
     }
   };
 
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/procurement" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Procurement Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-brand-orange" /> Vendor Master Catalog
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Procurement"
+        eyebrowIcon={Users}
+        title="Vendor Master Catalog"
+        description="Register and manage approved suppliers. Vendors are linked to purchase orders and goods received notes."
+        breadcrumbs={[
+          { label: 'Procurement', href: '/procurement' },
+          { label: 'Vendors' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 md:col-span-1">
-          <h2 className="text-sm font-semibold text-slate-300">Register New Vendor</h2>
+        {/* Register Form */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4 md:col-span-1">
+          <h2 className="text-sm font-semibold text-slate-800">Register New Vendor</h2>
           <form onSubmit={handleCreateVendor} className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Vendor Code</label>
+              <label className={labelClass}>Vendor Code</label>
               <input
                 type="text"
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. VEND-ACC-01"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Registered Business Name</label>
+              <label className={labelClass}>Registered Business Name</label>
               <input
                 type="text"
                 required
                 value={registeredName}
                 onChange={(e) => setRegisteredName(e.target.value)}
                 placeholder="e.g. Ghana Industrial Spares Ltd"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Email</label>
+              <label className={labelClass}>Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="sales@vendor.com"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Telephone</label>
+              <label className={labelClass}>Telephone</label>
               <input
                 type="text"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="0244000000"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Business Address</label>
+              <label className={labelClass}>Business Address</label>
               <textarea
                 required
                 rows={2}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Accra Industrial Area, Plot 14"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">GRA TIN / Tax ID</label>
+              <label className={labelClass}>GRA TIN / Tax ID</label>
               <input
                 type="text"
                 value={taxId}
                 onChange={(e) => setTaxId(e.target.value)}
                 placeholder="C0001234567"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#FF5B00] py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {submitting ? 'Registering...' : 'Register Vendor'}
+              <Check className="h-4 w-4" />
+              {submitting ? 'Registering…' : 'Register Vendor'}
             </button>
           </form>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 md:col-span-2 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-300">Registered Vendor Master Records</h2>
+        {/* Vendors Table */}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs md:col-span-2 overflow-hidden">
+          <div className="border-b border-slate-200 px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-slate-700">Registered Vendor Master Records</h2>
+          </div>
           {loading ? (
-            <div className="text-sm text-slate-500 py-8 text-center">Loading vendor master...</div>
+            <div className="p-6">
+              <LoadingSkeleton rows={5} columns={5} />
+            </div>
+          ) : vendors.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No vendors registered yet"
+              description="Register your first approved supplier to issue purchase orders."
+            />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                    <th className="p-3">Vendor Code</th>
-                    <th className="p-3">Business Name</th>
-                    <th className="p-3">Contact Email</th>
-                    <th className="p-3">GRA TIN</th>
-                    <th className="p-3">Status</th>
+              <table className="w-full text-left border-collapse">
+                <thead className="border-b border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className={thClass}>Vendor Code</th>
+                    <th className={thClass}>Business Name</th>
+                    <th className={thClass}>Contact Email</th>
+                    <th className={thClass}>GRA TIN</th>
+                    <th className={thClass}>Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-slate-100">
                   {vendors.map((v) => (
-                    <tr key={v.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3 font-mono font-medium text-brand-orange">{v.code}</td>
-                      <td className="p-3 font-medium text-white">{v.registeredName}</td>
-                      <td className="p-3 text-slate-300">{v.email}</td>
-                      <td className="p-3 font-mono text-slate-400">{v.taxId ?? 'N/A'}</td>
-                      <td className="p-3">
-                        <span className="px-2 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-400 font-medium">
-                          {v.status}
-                        </span>
+                    <tr key={v.id} className="hover:bg-slate-50 transition-colors">
+                      <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>{v.code}</td>
+                      <td className={`${tdClass} font-medium text-slate-800`}>{v.registeredName}</td>
+                      <td className={`${tdClass} text-slate-600`}>{v.email}</td>
+                      <td className={`${tdClass} font-mono text-slate-500`}>{v.taxId ?? 'N/A'}</td>
+                      <td className={tdClass}>
+                        <StatusBadge status={v.status} />
                       </td>
                     </tr>
                   ))}

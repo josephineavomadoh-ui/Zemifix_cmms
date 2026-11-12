@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Boxes, Building, PackageCheck, History, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { Search, Plus, Boxes, Building, History, PackageCheck } from 'lucide-react';
 import { StockReceiptModal } from '@/src/components/inventory/StockReceiptModal';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function InventoryDashboardPage() {
   const [parts, setParts] = useState<any[]>([]);
@@ -48,62 +51,60 @@ export default function InventoryDashboardPage() {
     fetchData();
   };
 
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Boxes className="w-7 h-7 text-brand-orange" />
-            Inventory & Stores Management
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Authoritative append-only stock transaction ledger, Weighted Average Cost (WAC) valuation, multi-warehouse stores, and work order material issues.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        eyebrowIcon={Boxes}
+        title="Inventory & Stores Management"
+        description="Authoritative append-only stock transaction ledger, Weighted Average Cost (WAC) valuation, multi-warehouse stores, and work order material issues."
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/inventory/stores"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
+            >
+              <Building className="h-4 w-4 text-slate-400" />
+              Stores
+            </Link>
+            <Link
+              href="/inventory/transactions"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
+            >
+              <History className="h-4 w-4 text-slate-400" />
+              Ledger
+            </Link>
+            <Link
+              href="/inventory/new"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              New Item / Part
+            </Link>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/inventory/stores"
-            className="px-3.5 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <Building className="w-4 h-4 text-slate-400" />
-            Stores
-          </Link>
-          <Link
-            href="/inventory/transactions"
-            className="px-3.5 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <History className="w-4 h-4 text-slate-400" />
-            Ledger
-          </Link>
-          <Link
-            href="/inventory/new"
-            className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-brand-orange/10"
-          >
-            <Plus className="w-4 h-4" />
-            New Item / Part
-          </Link>
-        </div>
-      </div>
-
-      {/* Search & Category Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <form onSubmit={handleSearchSubmit} className="md:col-span-2 relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by part number, SKU, barcode, or part name..."
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-orange"
+            placeholder="Search by part number, SKU, barcode, or part name…"
+            className="w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20"
           />
         </form>
 
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-xs focus:border-[#FF5B00] focus:outline-none sm:w-52"
         >
           <option value="">All Categories</option>
           <option value="SPARE_PARTS">Spare Parts</option>
@@ -117,61 +118,81 @@ export default function InventoryDashboardPage() {
       </div>
 
       {/* Parts Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading inventory catalog...</div>
+          <LoadingSkeleton rows={7} columns={6} />
         ) : parts.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm space-y-2">
-            <div>No inventory items found.</div>
-            <div className="text-xs text-slate-500">Create a new part master or receive opening stock.</div>
-          </div>
+          <EmptyState
+            icon={Boxes}
+            title="No inventory items found"
+            description="Create a new part master or receive opening stock."
+            action={
+              <Link
+                href="/inventory/new"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#F95700]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Part
+              </Link>
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="py-3.5 px-4">Part Number / SKU</th>
-                  <th className="py-3.5 px-4">Name / Category</th>
-                  <th className="py-3.5 px-4">Total Qty On Hand</th>
-                  <th className="py-3.5 px-4">Average Cost (WAC)</th>
-                  <th className="py-3.5 px-4">Total Valuation</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className={thClass}>Part Number / SKU</th>
+                  <th className={thClass}>Name / Category</th>
+                  <th className={thClass}>Total Qty On Hand</th>
+                  <th className={thClass}>Average Cost (WAC)</th>
+                  <th className={thClass}>Total Valuation</th>
+                  <th className={`${thClass} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {parts.map((p) => {
                   const totalOnHand = (p.stocks ?? []).reduce(
                     (sum: number, s: any) => sum + parseFloat(s.quantityOnHand ?? 0),
                     0
                   );
                   const totalValuation = totalOnHand * parseFloat(p.averageCost ?? 0);
+                  const isLowStock = p.reorderPoint && totalOnHand <= parseFloat(p.reorderPoint);
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-medium text-brand-orange">
+                    <tr
+                      key={p.id}
+                      className={`hover:bg-slate-50 transition-colors ${isLowStock ? 'bg-amber-50/50' : ''}`}
+                    >
+                      <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>
                         {p.partNumber}
-                        {p.barcode && <div className="text-xs font-sans text-slate-500">BC: {p.barcode}</div>}
+                        {p.barcode && <div className="text-xs font-sans text-slate-400">BC: {p.barcode}</div>}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-medium text-white">{p.name}</div>
-                        <div className="text-xs text-slate-400">{p.category.replace('_', ' ')}</div>
+                      <td className={tdClass}>
+                        <div className="font-medium text-slate-800">{p.name}</div>
+                        <div className="text-xs text-slate-400">{p.category.replace(/_/g, ' ')}</div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono font-semibold text-slate-200">
-                        {totalOnHand} <span className="text-xs text-slate-400">{p.uom}</span>
+                      <td className={tdClass}>
+                        <span className={`font-mono font-semibold ${isLowStock ? 'text-amber-700' : 'text-slate-700'}`}>
+                          {totalOnHand}
+                        </span>{' '}
+                        <span className="text-xs text-slate-400">{p.uom}</span>
+                        {isLowStock && (
+                          <div className="text-[10px] font-semibold text-amber-600 mt-0.5">LOW STOCK</div>
+                        )}
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-300">GHS {p.averageCost}</td>
-                      <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">
+                      <td className={`${tdClass} font-mono text-slate-600`}>GHS {p.averageCost}</td>
+                      <td className={`${tdClass} font-mono font-bold text-emerald-700`}>
                         GHS {totalValuation.toFixed(2)}
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className={`${tdClass} text-right`}>
                         <button
                           onClick={() => {
                             setSelectedPart(p);
                             setIsReceiptModalOpen(true);
                           }}
-                          className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
                         >
-                          <PackageCheck className="w-3.5 h-3.5 text-brand-orange" />
+                          <PackageCheck className="h-3.5 w-3.5 text-[#FF5B00]" />
                           Receive Stock
                         </button>
                       </td>

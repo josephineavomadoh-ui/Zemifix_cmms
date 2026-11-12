@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Plus, Check, ShieldCheck, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Plus, Check, ArrowRight } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
+import { StatusBadge } from '@/src/components/ui/StatusBadge';
 
 export default function ContractsPage() {
   const [contracts, setContracts] = useState<any[]>([]);
@@ -76,39 +80,41 @@ export default function ContractsPage() {
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-brand-orange" />
-            Customer Maintenance Contracts
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Service Level Agreements (SLAs), multi-site maintenance coverage, and contract-specific labor rate cards.
-          </p>
-        </div>
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
 
-        <button
-          onClick={() => setIsFormOpen(!isFormOpen)}
-          className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {isFormOpen ? 'Close Form' : 'Create Contract'}
-        </button>
-      </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Contracts"
+        eyebrowIcon={ShieldCheck}
+        title="Customer Maintenance Contracts"
+        description="Service Level Agreements (SLAs), multi-site maintenance coverage, and contract-specific labor rate cards."
+        actions={
+          <button
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {isFormOpen ? 'Close Form' : 'Create Contract'}
+          </button>
+        }
+      />
 
       {isFormOpen && (
-        <form onSubmit={handleCreateContract} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
-          <h2 className="text-base font-semibold text-white">Create Maintenance Contract</h2>
+        <form onSubmit={handleCreateContract} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">Create Maintenance Contract</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Select Customer</label>
+              <label className={labelClass}>Select Customer</label>
               <select
                 required
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               >
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -119,60 +125,60 @@ export default function ContractsPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Contract Title</label>
+              <label className={labelClass}>Contract Title</label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. 2026 Mining Equipment Full PM Maintenance SLA"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Start Date</label>
+              <label className={labelClass}>Start Date</label>
               <input
                 type="date"
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">End Date</label>
+              <label className={labelClass}>End Date</label>
               <input
                 type="date"
                 required
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Annual Contract Value (GHS)</label>
+              <label className={labelClass}>Annual Contract Value (GHS)</label>
               <input
                 type="number"
                 step="0.01"
                 required
                 value={contractValue}
                 onChange={(e) => setContractValue(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Assigned SLA Policy</label>
+            <label className={labelClass}>Assigned SLA Policy</label>
             <select
               value={slaPolicyId}
               onChange={(e) => setSlaPolicyId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             >
               <option value="">-- Default Standard SLA --</option>
               {policies.map((p) => (
@@ -183,57 +189,67 @@ export default function ContractsPage() {
             </select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {submitting ? 'Creating...' : 'Create Contract'}
+              <Check className="h-4 w-4" />
+              {submitting ? 'Creating…' : 'Create Contract'}
             </button>
           </div>
         </form>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading service contracts...</div>
+          <LoadingSkeleton rows={6} columns={7} />
         ) : contracts.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No maintenance contracts created yet.</div>
+          <EmptyState
+            icon={ShieldCheck}
+            title="No maintenance contracts created yet"
+            description="Create a service contract to manage SLAs and billing for a customer."
+            action={{ label: 'Create Contract', onClick: () => setIsFormOpen(true) }}
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">Contract #</th>
-                  <th className="p-3.5">Customer</th>
-                  <th className="p-3.5">Title</th>
-                  <th className="p-3.5">SLA Policy</th>
-                  <th className="p-3.5">Value (GHS)</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className={thClass}>Contract #</th>
+                  <th className={thClass}>Customer</th>
+                  <th className={thClass}>Title</th>
+                  <th className={thClass}>SLA Policy</th>
+                  <th className={thClass}>Value (GHS)</th>
+                  <th className={thClass}>Status</th>
+                  <th className={`${thClass} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {contracts.map((cnt) => (
-                  <tr key={cnt.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-medium text-brand-orange">{cnt.contractNumber}</td>
-                    <td className="p-3.5 font-medium text-white">{cnt.customer?.name}</td>
-                    <td className="p-3.5 text-slate-300">{cnt.title}</td>
-                    <td className="p-3.5 text-slate-400">{cnt.slaPolicy?.name ?? 'Standard'}</td>
-                    <td className="p-3.5 font-mono font-bold text-emerald-400">GHS {cnt.contractValue}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400">
-                        {cnt.status}
-                      </span>
+                  <tr key={cnt.id} className="hover:bg-slate-50 transition-colors">
+                    <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>{cnt.contractNumber}</td>
+                    <td className={`${tdClass} font-medium text-slate-800`}>{cnt.customer?.name}</td>
+                    <td className={`${tdClass} text-slate-600`}>{cnt.title}</td>
+                    <td className={`${tdClass} text-slate-500`}>{cnt.slaPolicy?.name ?? 'Standard'}</td>
+                    <td className={`${tdClass} font-mono font-bold text-emerald-700`}>GHS {cnt.contractValue}</td>
+                    <td className={tdClass}>
+                      <StatusBadge status={cnt.status} />
                     </td>
-                    <td className="p-3.5 text-right">
+                    <td className={`${tdClass} text-right`}>
                       <Link
                         href={`/contracts/${cnt.id}`}
-                        className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition-colors inline-flex items-center gap-1"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-xs hover:border-slate-300 hover:bg-slate-50 transition-colors"
                       >
-                        Rate Cards <ArrowRight className="w-3.5 h-3.5" />
+                        Rate Cards <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     </td>
                   </tr>

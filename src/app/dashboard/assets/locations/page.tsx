@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus } from 'lucide-react';
 import { LocationHierarchyTree, LocationNode } from '@/src/components/assets/LocationHierarchyTree';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<LocationNode[]>([]);
@@ -37,11 +39,7 @@ export default function LocationsPage() {
       const res = await fetch('/api/assets/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          code,
-          building,
-        }),
+        body: JSON.stringify({ name, code, building }),
       });
 
       if (res.ok) {
@@ -57,70 +55,82 @@ export default function LocationsPage() {
     }
   };
 
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/dashboard/assets" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Asset Register
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <MapPin className="w-6 h-6 text-brand-orange" /> Spatial Locations
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Assets"
+        eyebrowIcon={MapPin}
+        title="Spatial Locations"
+        description="Define the physical location hierarchy for asset placement and work order routing."
+        breadcrumbs={[
+          { label: 'Asset Register', href: '/dashboard/assets' },
+          { label: 'Locations' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 md:col-span-1">
-          <h2 className="text-sm font-semibold text-slate-300">New Location</h2>
+        {/* Create Form */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4 md:col-span-1">
+          <h2 className="text-sm font-semibold text-slate-800">New Location</h2>
           <form onSubmit={handleCreateLocation} className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Location Code</label>
+              <label className={labelClass}>Location Code</label>
               <input
                 type="text"
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. LOC-PUMP-ROOM-1"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Location Name</label>
+              <label className={labelClass}>Location Name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Main Water Pump Station"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Building / Facility</label>
+              <label className={labelClass}>Building / Facility</label>
               <input
                 type="text"
                 value={building}
                 onChange={(e) => setBuilding(e.target.value)}
                 placeholder="e.g. Block C"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#FF5B00] py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
-              {submitting ? 'Creating...' : 'Create Location'}
+              <Plus className="h-4 w-4" />
+              {submitting ? 'Creating…' : 'Create Location'}
             </button>
           </form>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 md:col-span-2">
-          <h2 className="text-sm font-semibold text-slate-300 mb-4">Spatial Location Tree</h2>
+        {/* Location Tree */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs md:col-span-2">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Spatial Location Tree</h2>
           {loading ? (
-            <div className="text-sm text-slate-500 py-8 text-center">Loading spatial locations...</div>
+            <LoadingSkeleton rows={5} columns={2} />
+          ) : locations.length === 0 ? (
+            <EmptyState
+              icon={MapPin}
+              title="No locations defined yet"
+              description="Create your first location to map where assets are physically placed."
+            />
           ) : (
             <LocationHierarchyTree locations={locations} />
           )}

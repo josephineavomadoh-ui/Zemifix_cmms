@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ShieldCheck, Plus, Check, Clock } from 'lucide-react';
+import { Clock, Plus, Check, AlertCircle } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function SlaPoliciesPage() {
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Form
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
@@ -37,23 +40,28 @@ export default function SlaPoliciesPage() {
   const handleCreatePolicy = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setCreateError(null);
     try {
-      // Create calendar first
-      const calRes = await fetch('/api/sla/calendars', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `${name} Business Calendar` }),
-      });
-      const calData = await calRes.json();
-
-      if (!calRes.ok) throw new Error(calData.error || 'Failed to create calendar');
+      // Create calendar first — /api/sla/calendars may not exist; handle gracefully
+      let calendarId: string | null = null;
+      try {
+        const calRes = await fetch('/api/sla/calendars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: `${name} Business Calendar` }),
+        });
+        const calData = await calRes.json();
+        if (calRes.ok) calendarId = calData.calendar?.id ?? null;
+      } catch {
+        // Calendar API not available — continue without it
+      }
 
       const res = await fetch('/api/sla/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
-          calendarId: calData.calendar.id,
+          ...(calendarId ? { calendarId } : {}),
           rules: [
             { priority: 'EMERGENCY', responseTargetMinutes: parseInt(emergencyResp), resolutionTargetMinutes: parseInt(emergencyRes) },
             { priority: 'HIGH', responseTargetMinutes: parseInt(highResp), resolutionTargetMinutes: parseInt(highRes) },
@@ -66,142 +74,173 @@ export default function SlaPoliciesPage() {
         setName('');
         setIsFormOpen(false);
         fetchPolicies();
+      } else {
+        const data = await res.json();
+        setCreateError(data.error || 'Failed to create SLA policy');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setCreateError(err.message ?? 'An error occurred');
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Clock className="w-7 h-7 text-brand-orange" />
-            SLA Policies & Priority Target Rules
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Configure response & resolution time targets, business calendars, and priority SLA matrices.
-          </p>
-        </div>
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
 
-        <button
-          onClick={() => setIsFormOpen(!isFormOpen)}
-          className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {isFormOpen ? 'Close Form' : 'New SLA Policy'}
-        </button>
-      </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="SLA"
+        eyebrowIcon={Clock}
+        title="SLA Policies & Priority Target Rules"
+        description="Configure response & resolution time targets, business calendars, and priority SLA matrices."
+        actions={
+          <button
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {isFormOpen ? 'Close Form' : 'New SLA Policy'}
+          </button>
+        }
+      />
 
       {isFormOpen && (
-        <form onSubmit={handleCreatePolicy} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
-          <h2 className="text-base font-semibold text-white">Create SLA Policy</h2>
+        <form onSubmit={handleCreatePolicy} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
+          <h2 className="text-sm font-semibold text-slate-800">Create SLA Policy</h2>
+
+          {createError && (
+            <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+              {createError}
+            </div>
+          )}
+
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Policy Name</label>
+            <label className={labelClass}>Policy Name</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Critical Infrastructure 24/7 SLA Policy"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-2">
-              <span className="text-xs font-bold text-rose-400 uppercase">EMERGENCY Priority Targets</span>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-4 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-600">EMERGENCY Priority Targets</span>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Response (Mins)</label>
+                  <label className={labelClass}>Response (Mins)</label>
                   <input
                     type="number"
                     required
                     value={emergencyResp}
                     onChange={(e) => setEmergencyResp(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                    className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Resolution (Mins)</label>
+                  <label className={labelClass}>Resolution (Mins)</label>
                   <input
                     type="number"
                     required
                     value={emergencyRes}
                     onChange={(e) => setEmergencyRes(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-2">
-              <span className="text-xs font-bold text-amber-400 uppercase">HIGH Priority Targets</span>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-4 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">HIGH Priority Targets</span>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Response (Mins)</label>
+                  <label className={labelClass}>Response (Mins)</label>
                   <input
                     type="number"
                     required
                     value={highResp}
                     onChange={(e) => setHighResp(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                    className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Resolution (Mins)</label>
+                  <label className={labelClass}>Resolution (Mins)</label>
                   <input
                     type="number"
                     required
                     value={highRes}
                     onChange={(e) => setHighRes(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {submitting ? 'Creating Policy...' : 'Save SLA Policy'}
+              <Check className="h-4 w-4" />
+              {submitting ? 'Creating Policy…' : 'Save SLA Policy'}
             </button>
           </div>
         </form>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-        <h2 className="text-sm font-semibold text-slate-300">Active SLA Policies</h2>
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs">
+        <div className="border-b border-slate-200 px-5 py-3.5">
+          <h2 className="text-sm font-semibold text-slate-700">Active SLA Policies</h2>
+        </div>
         {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Loading SLA policies...</div>
+          <div className="p-6">
+            <LoadingSkeleton rows={3} columns={2} />
+          </div>
         ) : policies.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-sm">No SLA policies defined yet.</div>
+          <EmptyState
+            icon={Clock}
+            title="No SLA policies defined yet"
+            description="Create a policy to enforce response and resolution targets on work orders."
+            action={{ label: 'New SLA Policy', onClick: () => setIsFormOpen(true) }}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5">
             {policies.map((p) => (
-              <div key={p.id} className="bg-slate-800/40 border border-slate-800 p-4 rounded-xl space-y-3">
-                <div className="flex justify-between items-start">
+              <div key={p.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-semibold text-sm text-white">{p.name}</div>
-                    <div className="font-mono text-xs text-brand-orange">{p.policyNumber}</div>
+                    <div className="font-semibold text-sm text-slate-800">{p.name}</div>
+                    <div className="font-mono text-xs text-[#FF5B00] mt-0.5">{p.policyNumber}</div>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-xs bg-emerald-500/10 text-emerald-400">ACTIVE</span>
+                  <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                    ACTIVE
+                  </span>
                 </div>
 
-                <div className="space-y-1 text-xs">
-                  <div className="text-slate-400 font-medium">Priority Target Rules:</div>
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Priority Target Rules</div>
                   {(p.rules ?? []).map((r: any) => (
-                    <div key={r.id} className="flex justify-between text-slate-300 font-mono">
-                      <span>{r.priority}:</span>
-                      <span>Resp {r.responseTargetMinutes}m | Res {r.resolutionTargetMinutes}m</span>
+                    <div key={r.id} className="flex items-center justify-between text-xs rounded-lg bg-white border border-slate-200 px-3 py-1.5">
+                      <span className="font-semibold text-slate-600">{r.priority}</span>
+                      <span className="font-mono text-slate-500">
+                        Resp {r.responseTargetMinutes}m &nbsp;|&nbsp; Res {r.resolutionTargetMinutes}m
+                      </span>
                     </div>
                   ))}
                 </div>

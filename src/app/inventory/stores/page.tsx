@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Building, Plus } from 'lucide-react';
+import { Building, Plus } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function StoresPage() {
   const [stores, setStores] = useState<any[]>([]);
@@ -36,11 +38,7 @@ export default function StoresPage() {
       const res = await fetch('/api/inventory/stores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code,
-          name,
-          type,
-        }),
+        body: JSON.stringify({ code, name, type }),
       });
 
       if (res.ok) {
@@ -55,51 +53,56 @@ export default function StoresPage() {
     }
   };
 
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/inventory" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Inventory Catalog
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Building className="w-6 h-6 text-brand-orange" /> Warehouse & Stores Management
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        eyebrowIcon={Building}
+        title="Warehouse & Stores Management"
+        description="Configure physical storage locations for inventory management and stock tracking."
+        breadcrumbs={[
+          { label: 'Inventory', href: '/inventory' },
+          { label: 'Stores' },
+        ]}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 md:col-span-1">
-          <h2 className="text-sm font-semibold text-slate-300">New Store / Warehouse</h2>
+        {/* Create Form */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4 md:col-span-1">
+          <h2 className="text-sm font-semibold text-slate-800">New Store / Warehouse</h2>
           <form onSubmit={handleCreateStore} className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Store Code</label>
+              <label className={labelClass}>Store Code</label>
               <input
                 type="text"
                 required
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. STR-MAIN-ACC"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Store Name</label>
+              <label className={labelClass}>Store Name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Main Central Warehouse"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Store Type</label>
+              <label className={labelClass}>Store Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               >
                 <option value="MAIN">Main Warehouse</option>
                 <option value="BRANCH">Branch Store</option>
@@ -109,31 +112,40 @@ export default function StoresPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#FF5B00] py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
-              {submitting ? 'Creating...' : 'Create Store'}
+              <Plus className="h-4 w-4" />
+              {submitting ? 'Creating…' : 'Create Store'}
             </button>
           </form>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 md:col-span-2 space-y-4">
-          <h2 className="text-sm font-semibold text-slate-300">Active Warehouses & Stores</h2>
+        {/* Stores Grid */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs md:col-span-2 space-y-4">
+          <h2 className="text-sm font-semibold text-slate-700">Active Warehouses & Stores</h2>
           {loading ? (
-            <div className="text-sm text-slate-500 py-8 text-center">Loading stores...</div>
+            <LoadingSkeleton rows={4} columns={3} />
+          ) : stores.length === 0 ? (
+            <EmptyState
+              icon={Building}
+              title="No stores created yet"
+              description="Create your first warehouse or store to manage stock locations."
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {stores.map((s) => (
-                <div key={s.id} className="bg-slate-800/40 border border-slate-800 p-4 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-start">
+                <div key={s.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-semibold text-sm text-white">{s.name}</div>
-                      <div className="font-mono text-brand-orange">{s.code}</div>
+                      <div className="font-semibold text-sm text-slate-800">{s.name}</div>
+                      <div className="font-mono text-xs text-[#FF5B00] mt-0.5">{s.code}</div>
                     </div>
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium">{s.type}</span>
+                    <span className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {s.type}
+                    </span>
                   </div>
-                  <div className="text-slate-400">Branch: {s.branch?.name}</div>
-                  <div className="text-slate-400">Manager: {s.managerUser?.name ?? 'Unassigned'}</div>
+                  <div className="text-xs text-slate-500">Branch: {s.branch?.name ?? '—'}</div>
+                  <div className="text-xs text-slate-500">Manager: {s.managerUser?.name ?? 'Unassigned'}</div>
                 </div>
               ))}
             </div>

@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Receipt, Plus, Check, ShieldCheck, DollarSign, ArrowRight, PackageCheck } from 'lucide-react';
+import { Receipt, Plus, Check } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
+import { StatusBadge } from '@/src/components/ui/StatusBadge';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -115,39 +118,41 @@ export default function InvoicesPage() {
     }
   };
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Receipt className="w-7 h-7 text-brand-orange" />
-            Commercial Invoicing & Accounts Receivable
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Issue commercial invoices, allocate gapless numbers upon approval, compute Ghana statutory taxes (VAT 15%, NHIL 2.5%, GETFund 2.5%), and record payment remittances.
-          </p>
-        </div>
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-medium text-slate-500 mb-1';
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
 
-        <button
-          onClick={() => setIsFormOpen(!isFormOpen)}
-          className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          {isFormOpen ? 'Close Form' : 'Create Draft Invoice'}
-        </button>
-      </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Finance"
+        eyebrowIcon={Receipt}
+        title="Commercial Invoicing & Accounts Receivable"
+        description="Issue commercial invoices, allocate gapless numbers upon approval, compute Ghana statutory taxes (VAT 15%, NHIL 2.5%, GETFund 2.5%), and record payment remittances."
+        actions={
+          <button
+            onClick={() => setIsFormOpen(!isFormOpen)}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {isFormOpen ? 'Close Form' : 'Create Draft Invoice'}
+          </button>
+        }
+      />
 
       {isFormOpen && (
-        <form onSubmit={handleCreateDraftInvoice} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
-          <h2 className="text-base font-semibold text-white">Create Draft Commercial Invoice</h2>
+        <form onSubmit={handleCreateDraftInvoice} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+          <h2 className="text-sm font-semibold text-slate-800">Create Draft Commercial Invoice</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Target Customer Account</label>
+              <label className={labelClass}>Target Customer Account</label>
               <select
                 required
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               >
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.name} ({c.customerNumber})</option>
@@ -156,31 +161,31 @@ export default function InvoicesPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Due Date</label>
+              <label className={labelClass}>Due Date</label>
               <input
                 type="date"
                 required
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Billing Item Description</label>
+              <label className={labelClass}>Billing Item Description</label>
               <input
                 type="text"
                 required
                 value={itemDesc}
                 onChange={(e) => setItemDesc(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Quantity</label>
+              <label className={labelClass}>Quantity</label>
               <input
                 type="number"
                 step="1"
@@ -188,96 +193,108 @@ export default function InvoicesPage() {
                 required
                 value={itemQty}
                 onChange={(e) => setItemQty(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Unit Price (GHS)</label>
+              <label className={labelClass}>Unit Price (GHS)</label>
               <input
                 type="number"
                 step="0.01"
                 required
                 value={itemPrice}
                 onChange={(e) => setItemPrice(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className={inputClass}
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsFormOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
             >
-              <Check className="w-4 h-4" />
-              {submitting ? 'Creating Draft...' : 'Save Draft Invoice'}
+              <Check className="h-4 w-4" />
+              {submitting ? 'Creating Draft…' : 'Save Draft Invoice'}
             </button>
           </div>
         </form>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading commercial invoices...</div>
+          <LoadingSkeleton rows={6} columns={8} />
         ) : invoices.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">No commercial invoices generated yet.</div>
+          <EmptyState
+            icon={Receipt}
+            title="No commercial invoices generated yet"
+            description="Create a draft invoice and approve it to assign a gapless invoice number."
+            action={{ label: 'Create Draft Invoice', onClick: () => setIsFormOpen(true) }}
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">Invoice / Ref #</th>
-                  <th className="p-3.5">Customer</th>
-                  <th className="p-3.5">Subtotal</th>
-                  <th className="p-3.5">Taxes (VAT+NHIL+GETFund)</th>
-                  <th className="p-3.5">Total Amount</th>
-                  <th className="p-3.5">Balance Due</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Actions</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className={thClass}>Invoice / Ref #</th>
+                  <th className={thClass}>Customer</th>
+                  <th className={thClass}>Subtotal</th>
+                  <th className={thClass}>Taxes</th>
+                  <th className={thClass}>Total Amount</th>
+                  <th className={thClass}>Balance Due</th>
+                  <th className={thClass}>Status</th>
+                  <th className={`${thClass} text-right`}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {invoices.map((inv) => {
                   const totalTax = parseFloat(inv.vatAmount ?? 0) + parseFloat(inv.nhilAmount ?? 0) + parseFloat(inv.getFundAmount ?? 0);
 
                   return (
-                    <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3.5 font-mono font-medium text-brand-orange">
+                    <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                      <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>
                         {inv.invoiceNumber ?? inv.draftReference}
                       </td>
-                      <td className="p-3.5 font-medium text-white">{inv.customer?.name}</td>
-                      <td className="p-3.5 font-mono text-slate-300">GHS {inv.subtotal}</td>
-                      <td className="p-3.5 font-mono text-slate-400">GHS {totalTax.toFixed(2)}</td>
-                      <td className="p-3.5 font-mono font-bold text-emerald-400">GHS {inv.totalAmount}</td>
-                      <td className="p-3.5 font-mono font-bold text-amber-400">GHS {inv.balanceDue}</td>
-                      <td className="p-3.5">
-                        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-800 text-slate-300">
-                          {inv.status}
-                        </span>
+                      <td className={`${tdClass} font-medium text-slate-800`}>{inv.customer?.name}</td>
+                      <td className={`${tdClass} font-mono text-slate-600`}>GHS {inv.subtotal}</td>
+                      <td className={`${tdClass} font-mono text-slate-500`}>GHS {totalTax.toFixed(2)}</td>
+                      <td className={`${tdClass} font-mono font-bold text-emerald-700`}>GHS {inv.totalAmount}</td>
+                      <td className={`${tdClass} font-mono font-bold text-amber-700`}>GHS {inv.balanceDue}</td>
+                      <td className={tdClass}>
+                        <StatusBadge status={inv.status} />
                       </td>
-                      <td className="p-3.5 text-right space-x-2">
-                        {inv.status === 'DRAFT' && (
-                          <button
-                            onClick={() => handleApproveInvoice(inv.id)}
-                            className="px-2.5 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {inv.status !== 'DRAFT' && inv.status !== 'PAID' && (
-                          <button
-                            onClick={() => {
-                              setSelectedInvoice(inv);
-                              setPaymentAmount(inv.balanceDue);
-                              setIsPaymentModalOpen(true);
-                            }}
-                            className="px-2.5 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors"
-                          >
-                            Record Payment
-                          </button>
-                        )}
+                      <td className={`${tdClass} text-right`}>
+                        <div className="flex items-center justify-end gap-2">
+                          {inv.status === 'DRAFT' && (
+                            <button
+                              onClick={() => handleApproveInvoice(inv.id)}
+                              className="rounded px-2.5 py-1 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {inv.status !== 'DRAFT' && inv.status !== 'PAID' && (
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(inv);
+                                setPaymentAmount(inv.balanceDue);
+                                setIsPaymentModalOpen(true);
+                              }}
+                              className="rounded px-2.5 py-1 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                            >
+                              Record Payment
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -290,15 +307,18 @@ export default function InvoicesPage() {
 
       {/* Record Payment Modal */}
       {isPaymentModalOpen && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-100">
-            <h3 className="font-semibold text-lg text-white">Record Customer Payment Remittance</h3>
-            <p className="text-xs text-slate-400">
-              Allocating payment against Invoice <span className="font-mono text-brand-orange">{selectedInvoice.invoiceNumber ?? selectedInvoice.draftReference}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="rounded-xl border border-slate-200 bg-white max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 className="font-semibold text-base text-slate-800">Record Customer Payment Remittance</h3>
+            <p className="text-xs text-slate-500">
+              Allocating payment against Invoice{' '}
+              <span className="font-mono font-semibold text-[#FF5B00]">
+                {selectedInvoice.invoiceNumber ?? selectedInvoice.draftReference}
+              </span>
             </p>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">
                 Remittance Amount (GHS)
               </label>
               <input
@@ -307,21 +327,24 @@ export default function InvoicesPage() {
                 required
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-xs focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setIsPaymentModalOpen(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+              >
                 Cancel
               </button>
               <button
                 onClick={handleRecordPayment}
                 disabled={submitting}
-                className="px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 transition-colors disabled:opacity-50"
               >
-                <Check className="w-4 h-4" />
-                {submitting ? 'Recording...' : 'Allocate Payment'}
+                <Check className="h-4 w-4" />
+                {submitting ? 'Recording…' : 'Allocate Payment'}
               </button>
             </div>
           </div>

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RotateCcw, Check } from 'lucide-react';
+import { RotateCcw, Check, AlertCircle } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
 
 export default function StockReturnsPage() {
   const [workOrders, setWorkOrders] = useState<any[]>([]);
@@ -62,30 +63,33 @@ export default function StockReturnsPage() {
 
   const selectedWo = workOrders.find((w) => w.id === selectedWoId);
 
+  const inputClass =
+    'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 shadow-xs transition focus:border-[#FF5B00] focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/20';
+  const labelClass = 'block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1';
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/inventory" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Inventory Catalog
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <RotateCcw className="w-6 h-6 text-brand-orange" /> Work Order Material Return
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        eyebrowIcon={RotateCcw}
+        title="Work Order Material Return"
+        description="Return unused materials from completed work orders back to warehouse stock."
+        breadcrumbs={[
+          { label: 'Inventory', href: '/inventory' },
+          { label: 'Returns' },
+        ]}
+      />
 
       {error && (
-        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-sm">
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
           {error}
         </div>
       )}
 
-      <form onSubmit={handleReturnSubmit} className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+      <form onSubmit={handleReturnSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Select Work Order
-          </label>
+          <label className={labelClass}>Select Work Order</label>
           <select
             required
             value={selectedWoId}
@@ -93,7 +97,7 @@ export default function StockReturnsPage() {
               setSelectedWoId(e.target.value);
               setSelectedPartId('');
             }}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           >
             <option value="">-- Select Work Order --</option>
             {workOrders.map((w) => (
@@ -106,14 +110,12 @@ export default function StockReturnsPage() {
 
         {selectedWo && (
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Select Issued Material to Return
-            </label>
+            <label className={labelClass}>Select Issued Material to Return</label>
             <select
               required
               value={selectedPartId}
               onChange={(e) => setSelectedPartId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+              className={inputClass}
             >
               <option value="">-- Select Material --</option>
               {(selectedWo.parts ?? []).map((p: any) => (
@@ -126,14 +128,12 @@ export default function StockReturnsPage() {
         )}
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Receiving Warehouse / Store
-          </label>
+          <label className={labelClass}>Receiving Warehouse / Store</label>
           <select
             required
             value={storeId}
             onChange={(e) => setStoreId(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           >
             {stores.map((s) => (
               <option key={s.id} value={s.id}>
@@ -144,9 +144,7 @@ export default function StockReturnsPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Quantity to Return
-          </label>
+          <label className={labelClass}>Quantity to Return</label>
           <input
             type="number"
             step="1"
@@ -154,21 +152,21 @@ export default function StockReturnsPage() {
             required
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-orange"
+            className={inputClass}
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-          <Link href="/inventory" className="px-4 py-2 text-sm text-slate-400 hover:text-white">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <Link href="/inventory" className="rounded-lg px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
             Cancel
           </Link>
           <button
             type="submit"
             disabled={submitting}
-            className="px-5 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white font-medium text-sm rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#FF5B00] px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#F95700] transition-colors disabled:opacity-50"
           >
-            <Check className="w-4 h-4" />
-            {submitting ? 'Returning...' : 'Return Material to Stock'}
+            <Check className="h-4 w-4" />
+            {submitting ? 'Returning…' : 'Return Material to Stock'}
           </button>
         </div>
       </form>

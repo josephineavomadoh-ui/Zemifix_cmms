@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, AlertTriangle, Boxes, ShoppingCart } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/src/components/ui/PageHeader';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { LoadingSkeleton } from '@/src/components/ui/LoadingSkeleton';
 
 export default function ReorderManagementPage() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -43,51 +45,59 @@ export default function ReorderManagementPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-        <div className="space-y-1">
-          <Link href="/inventory" className="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Inventory Catalog
-          </Link>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6 text-amber-500" /> Reorder Recommendations & Low Stock Alerts
-          </h1>
-          <p className="text-xs text-slate-400">
-            Calculated available stock triggers preparing procurement purchase requisitions for Stage D.4.
-          </p>
-        </div>
-      </div>
+  const thClass = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+  const tdClass = 'px-4 py-3.5 text-sm';
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Inventory"
+        eyebrowIcon={AlertTriangle}
+        title="Reorder Recommendations"
+        description="Parts and materials with available stock at or below their reorder trigger level."
+        breadcrumbs={[
+          { label: 'Inventory', href: '/inventory' },
+          { label: 'Reorder Queue' },
+        ]}
+      />
+
+      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-sm">Loading low stock items...</div>
+          <LoadingSkeleton rows={6} columns={6} />
         ) : recommendations.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm">
-            All inventory item stock levels are healthy above reorder thresholds.
-          </div>
+          <EmptyState
+            icon={AlertTriangle}
+            title="All stock levels are healthy"
+            description="No parts are currently at or below their reorder trigger level."
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
-                  <th className="p-3.5">Part Number</th>
-                  <th className="p-3.5">Part Name</th>
-                  <th className="p-3.5">Warehouse Store</th>
-                  <th className="p-3.5">Available Stock</th>
-                  <th className="p-3.5">Reorder Level</th>
-                  <th className="p-3.5">Suggested Order Qty</th>
+            <table className="w-full text-left border-collapse">
+              <thead className="border-b border-slate-200 bg-amber-50">
+                <tr>
+                  <th className={thClass}>Part Number</th>
+                  <th className={thClass}>Part Name</th>
+                  <th className={thClass}>Warehouse Store</th>
+                  <th className={thClass}>Available Stock</th>
+                  <th className={thClass}>Reorder Level</th>
+                  <th className={thClass}>Suggested Order Qty</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {recommendations.map((r, i) => (
-                  <tr key={i} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-medium text-brand-orange">{r.partNumber}</td>
-                    <td className="p-3.5 font-medium text-white">{r.name}</td>
-                    <td className="p-3.5 text-slate-300">{r.storeName}</td>
-                    <td className="p-3.5 font-mono font-bold text-rose-400">{r.available} {r.uom}</td>
-                    <td className="p-3.5 font-mono text-slate-400">{r.reorderLevel} {r.uom}</td>
-                    <td className="p-3.5 font-mono font-bold text-emerald-400">{r.reorderQuantity} {r.uom}</td>
+                  <tr key={i} className="hover:bg-amber-50/50 transition-colors">
+                    <td className={`${tdClass} font-mono font-medium text-[#FF5B00]`}>{r.partNumber}</td>
+                    <td className={`${tdClass} font-medium text-slate-800`}>{r.name}</td>
+                    <td className={`${tdClass} text-slate-600`}>{r.storeName}</td>
+                    <td className={tdClass}>
+                      <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+                        {r.available} {r.uom}
+                      </span>
+                    </td>
+                    <td className={`${tdClass} font-mono text-slate-500`}>{r.reorderLevel} {r.uom}</td>
+                    <td className={tdClass}>
+                      <span className="font-mono font-bold text-emerald-700">{r.reorderQuantity} {r.uom}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
