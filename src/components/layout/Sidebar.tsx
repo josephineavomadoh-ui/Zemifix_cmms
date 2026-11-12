@@ -4,21 +4,32 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '../brand/Logo';
+import { useAuth } from '@/src/lib/auth-context';
 import {
-  LayoutDashboard,
-  ClipboardList,
-  MessageSquareWarning,
-  Wrench,
-  CalendarCheck2,
-  Boxes,
-  Truck,
-  Receipt,
+  Activity,
   BarChart3,
+  Boxes,
   Building2,
-  Users2,
-  Settings,
+  CalendarDays,
+  CalendarCheck2,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  FileInput,
+  FileText,
+  HardHat,
+  LayoutDashboard,
+  LogOut,
+  PackageSearch,
+  Receipt,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Users2,
+  Wrench,
+  MessageSquareWarning,
+  Handshake,
+  CircleDollarSign,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +39,62 @@ interface SidebarProps {
   onCloseMobile: () => void;
 }
 
+const navigationGroups = [
+  {
+    group: 'Workspace',
+    items: [{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
+  },
+  {
+    group: 'Maintenance',
+    items: [
+      { name: 'Work orders', href: '/work-orders', icon: ClipboardList },
+      { name: 'Schedule', href: '/work-orders/calendar', icon: CalendarDays },
+      { name: 'Service requests', href: '/requests', icon: MessageSquareWarning },
+      { name: 'Preventive plans', href: '/preventive', icon: CalendarCheck2 },
+      { name: 'Assets', href: '/assets', icon: Wrench },
+      { name: 'Asset register', href: '/dashboard/assets', icon: Boxes },
+      { name: 'Locations', href: '/dashboard/assets/locations', icon: Building2 },
+      { name: 'Categories', href: '/dashboard/assets/categories', icon: PackageSearch },
+    ],
+  },
+  {
+    group: 'Customers & service',
+    items: [
+      { name: 'Customers', href: '/customers', icon: Users2 },
+      { name: 'Contracts', href: '/contracts', icon: Handshake },
+      { name: 'Quotes', href: '/quotes', icon: FileText },
+      { name: 'SLA policies', href: '/sla/policies', icon: ShieldCheck },
+      { name: 'SLA breaches', href: '/sla/breaches', icon: Activity },
+    ],
+  },
+  {
+    group: 'Supply & finance',
+    items: [
+      { name: 'Inventory', href: '/inventory', icon: Boxes },
+      { name: 'Stores', href: '/inventory/stores', icon: Building2 },
+      { name: 'Stock transactions', href: '/inventory/transactions', icon: FileText },
+      { name: 'Reorder queue', href: '/inventory/reorder', icon: PackageSearch },
+      { name: 'Procurement', href: '/procurement', icon: ShoppingCart },
+      { name: 'Requisitions', href: '/procurement/requisitions', icon: FileInput },
+      { name: 'Purchase orders', href: '/procurement/purchase-orders', icon: ClipboardList },
+      { name: 'Suppliers', href: '/procurement/vendors', icon: HardHat },
+      { name: 'Finance', href: '/finance', icon: CircleDollarSign },
+      { name: 'Invoices', href: '/finance/invoices', icon: Receipt },
+    ],
+  },
+  {
+    group: 'Administration',
+    items: [
+      { name: 'Reports', href: '/reports', icon: BarChart3 },
+      { name: 'Import data', href: '/import', icon: FileInput },
+      { name: 'Workers', href: '/workers', icon: HardHat },
+      { name: 'Organization', href: '/organization', icon: Building2 },
+      { name: 'Users & roles', href: '/users', icon: Users2 },
+      { name: 'Settings', href: '/settings', icon: Settings },
+    ],
+  },
+];
+
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapse,
@@ -35,166 +102,128 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const pathname = usePathname();
-
-  const navigationGroups = [
-    {
-      group: 'Core Operations',
-      items: [
-        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'Work Orders', href: '/work-orders', icon: ClipboardList, badge: '42' },
-        { name: 'Requests', href: '/requests', icon: MessageSquareWarning, badge: '11' },
-        { name: 'Assets & Equipment', href: '/dashboard/assets', icon: Wrench },
-        { name: 'Preventive Maint.', href: '/preventive', icon: CalendarCheck2, alertBadge: '3' },
-      ],
-    },
-    {
-      group: 'Supply & Finance',
-      items: [
-        { name: 'Inventory & Stock', href: '/inventory', icon: Boxes },
-        { name: 'Procurement', href: '/procurement', icon: Truck },
-        { name: 'Finance & Billing', href: '/finance', icon: Receipt },
-        { name: 'Reports & Analytics', href: '/reports', icon: BarChart3 },
-      ],
-    },
-    {
-      group: 'Administration',
-      items: [
-        { name: 'Organization', href: '/organization', icon: Building2 },
-        { name: 'Users & Roles', href: '/users', icon: Users2 },
-        { name: 'System Settings', href: '/settings', icon: Settings },
-      ],
-    },
-  ];
+  const { user, logout } = useAuth();
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close navigation menu"
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-[#080E29]/55 lg:hidden"
         />
       )}
 
-      {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-[#0B1336] text-white transition-all duration-300 ease-in-out border-r border-[#16204E] ${
-          collapsed ? 'w-20' : 'w-64'
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-[#080E29] text-white transition-[width,transform] duration-200 ${
+          collapsed ? 'w-[76px]' : 'w-64'
         } ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
-        {/* Brand Header */}
-        <div className="flex h-14 shrink-0 items-center justify-between px-3.5 border-b border-[#16204E]">
-          {collapsed ? (
-            <div className="mx-auto">
-              <Logo variant="icon" width={32} height={32} />
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 pl-0.5">
-              <Logo variant="dark" width={130} height={34} />
-            </div>
-          )}
-
-          {/* Desktop collapse toggle */}
+        <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-white/10 px-4">
+          <Link
+            href="/dashboard"
+            onClick={onCloseMobile}
+            aria-label="ZemiFix dashboard"
+            className={collapsed ? 'mx-auto' : 'min-w-0'}
+          >
+            <Logo
+              variant={collapsed ? 'icon' : 'dark'}
+              width={collapsed ? 36 : 138}
+              height={collapsed ? 36 : 54}
+            />
+          </Link>
           <button
+            type="button"
             onClick={onToggleCollapse}
-            aria-label="Toggle sidebar"
-            className="hidden lg:flex h-6.5 w-6.5 items-center justify-center rounded-md text-slate-400 hover:bg-[#16204E] hover:text-white transition-colors cursor-pointer"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white lg:flex"
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </button>
         </div>
 
-        {/* Operating Modes Badge */}
-        {!collapsed && (
-          <div className="shrink-0 px-3 py-1.5 mx-2.5 mt-2 rounded-lg bg-[#070D26] border border-[#16204E] flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 font-medium">Mode:</span>
-            <span className="font-semibold text-emerald-400 flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              Facility + Contractor
-            </span>
-          </div>
-        )}
-
-        {/* Navigation Links */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-3 scrollbar-thin scrollbar-thumb-slate-700/50">
-          {navigationGroups.map((grp) => (
-            <div key={grp.group} className="space-y-0.5">
+        <nav
+          aria-label="Main navigation"
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2.5 py-5"
+        >
+          {navigationGroups.map((group) => (
+            <section key={group.group} aria-label={group.group}>
               {!collapsed && (
-                <div className="px-2.5 pb-0.5 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {grp.group}
-                </div>
+                <h2 className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  {group.group}
+                </h2>
               )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`)) ||
+                    (item.href === '/dashboard' && pathname === '/');
 
-              {grp.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href === '/dashboard' && pathname === '/');
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onCloseMobile}
-                    title={collapsed ? item.name : undefined}
-                    className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 ${
-                      isActive
-                        ? 'bg-[#FF5B00] text-white font-semibold shadow-xs shadow-[#FF5B00]/30'
-                        : 'text-slate-300 hover:bg-[#16204E] hover:text-white'
-                    }`}
-                  >
-                    <Icon
-                      className={`h-4 w-4 shrink-0 ${
-                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onCloseMobile}
+                      title={collapsed ? item.name : undefined}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`group relative flex min-h-9 items-center gap-3 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
+                        isActive
+                          ? 'bg-white/10 text-white'
+                          : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'
                       }`}
-                    />
-
-                    {!collapsed && (
-                      <span className="flex-1 truncate leading-tight">{item.name}</span>
-                    )}
-
-                    {!collapsed && item.badge && (
-                      <span
-                        className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-[#16204E] text-slate-300'
+                    >
+                      {isActive && (
+                        <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-[#FF5B00]" />
+                      )}
+                      <Icon
+                        aria-hidden="true"
+                        className={`h-4 w-4 shrink-0 ${
+                          isActive ? 'text-[#FF5B00]' : 'text-slate-400 group-hover:text-white'
                         }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-
-                    {!collapsed && item.alertBadge && (
-                      <span className="rounded-full bg-rose-500/90 text-white px-1.5 py-0.2 text-[10px] font-bold">
-                        {item.alertBadge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+                      />
+                      {!collapsed && <span className="truncate">{item.name}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           ))}
         </nav>
 
-        {/* Footer Quick Info */}
-        {!collapsed ? (
-          <div className="shrink-0 p-2.5 border-t border-[#16204E] bg-[#070D26]/80 text-[11px] text-slate-400">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-slate-300">ZemiFix CMMS</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-[#16204E] rounded text-[#FF5B00] font-mono">
-                v1.0-RC
-              </span>
+        <div className="shrink-0 border-t border-white/10 p-3">
+          <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+              {user?.name
+                ? user.name
+                    .split(/\s+/)
+                    .map((part) => part[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                : 'ZF'}
             </div>
-            <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-              Single-Company Enterprise Deployment
-            </p>
+            {!collapsed && (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-white">{user?.name || 'Staff account'}</p>
+                  <p className="truncate text-[10px] text-slate-400">{user?.role?.name || 'ZemiFix workspace'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
-        ) : (
-          <div className="shrink-0 p-2 border-t border-[#16204E] text-center">
-            <span className="text-[10px] font-mono text-[#FF5B00]">v1.0</span>
-          </div>
-        )}
+        </div>
       </aside>
     </>
   );

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Logo } from '@/src/components/brand/Logo';
 
 export default function CustomerPortalLoginPage() {
   const router = useRouter();
@@ -38,8 +39,11 @@ export default function CustomerPortalLoginPage() {
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 text-slate-100">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-xl bg-brand-orange/10 border border-brand-orange/20 text-brand-orange">
-            <Users className="w-8 h-8" />
+          <div className="flex justify-center">
+            <Logo variant="dark" width={156} height={60} />
+          </div>
+          <div className="mx-auto inline-flex rounded-md bg-brand-orange/10 p-2 text-brand-orange">
+            <Users className="h-5 w-5" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Customer Portal Login</h1>
           <p className="text-xs text-slate-400">

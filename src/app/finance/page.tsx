@@ -1,10 +1,5 @@
-import { Shell } from '@/src/components/layout/Shell';
-import { FinanceView } from '@/src/components/finance/FinanceView';
+import { redirect } from 'next/navigation';
 
 export default function FinancePage() {
-  return (
-    <Shell>
-      <FinanceView />
-    </Shell>
-  );
+  redirect('/finance/invoices');
 }

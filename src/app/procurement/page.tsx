@@ -11,57 +11,73 @@ export default function ProcurementDashboardPage() {
   const [totalSpend, setTotalSpend] = useState<number>(0);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/procurement/vendors').then((res) => res.json()),
-      fetch('/api/procurement/requisitions').then((res) => res.json()),
-      fetch('/api/procurement/purchase-orders').then((res) => res.json()),
-    ])
-      .then(([vData, rData, poData]) => {
+    async function loadProcurement() {
+      try {
+        const responses = await Promise.all([
+          fetch('/api/procurement/vendors'),
+          fetch('/api/procurement/requisitions'),
+          fetch('/api/procurement/purchase-orders'),
+        ]);
+        const [vData, rData, poData] = await Promise.all(responses.map((response) => response.json()));
+        const failedIndex = responses.findIndex((response) => !response.ok);
+        if (failedIndex !== -1) {
+          const failedResponse = responses[failedIndex];
+          const failedData = [vData, rData, poData][failedIndex];
+          throw new Error(failedData?.message || failedData?.error || `Unable to load procurement data (HTTP ${failedResponse.status}).`);
+        }
         setVendorsCount(vData.count ?? 0);
         setRequisitionsCount(rData.count ?? 0);
         const pos = poData.purchaseOrders ?? [];
         setPoCount(pos.length);
         setRecentOrders(pos.slice(0, 5));
 
-        const spend = pos.reduce((sum: number, po: any) => sum + parseFloat(po.totalAmount ?? 0), 0);
+        const spend = pos.reduce((sum: number, po: any) => sum + Number(po.totalAmount ?? 0), 0);
         setTotalSpend(spend);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+        setError(null);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Unable to load procurement data.');
+        setRecentOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadProcurement();
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
+    <div className="space-y-5">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Truck className="w-7 h-7 text-brand-orange" />
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-[#080E29]">
+            <Truck className="h-6 w-6 text-[#FF5B00]" />
             Procurement & Vendor Management
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Purchase requisitions, vendor quotation evaluation, purchase order issuance, Ghana statutory taxes (VAT 15%, NHIL 2.5%, GETFund 2.5%), and GRN stock receipt integration.
+          <p className="mt-1 text-sm text-slate-500">
+            Track requisitions, purchase orders, suppliers and goods received.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link
             href="/procurement/vendors"
-            className="px-3.5 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <Users className="w-4 h-4 text-slate-400" /> Vendors
           </Link>
           <Link
             href="/procurement/requisitions"
-            className="px-3.5 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors flex items-center gap-1.5"
+            className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <FileText className="w-4 h-4 text-slate-400" /> Requisitions
           </Link>
           <Link
             href="/procurement/purchase-orders"
-            className="px-4 py-2 text-sm font-medium bg-brand-orange hover:bg-brand-orange-hover text-white rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-brand-orange/10"
+            className="flex items-center gap-2 rounded-md bg-[#FF5B00] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#F95700]"
           >
             <ShoppingCart className="w-4 h-4" /> Purchase Orders
           </Link>
@@ -69,46 +85,49 @@ export default function ProcurementDashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-2">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registered Vendors</div>
-          <div className="text-2xl font-bold text-white">{vendorsCount}</div>
+      {error && <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</div>}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="text-[11px] font-medium text-slate-500">Registered vendors</div>
+          <div className="text-2xl font-semibold text-[#080E29]">{loading ? '—' : error ? '—' : vendorsCount}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-2">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Purchase Requisitions</div>
-          <div className="text-2xl font-bold text-white">{requisitionsCount}</div>
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="text-[11px] font-medium text-slate-500">Purchase requisitions</div>
+          <div className="text-2xl font-semibold text-[#080E29]">{loading ? '—' : error ? '—' : requisitionsCount}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-2">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Issued Purchase Orders</div>
-          <div className="text-2xl font-bold text-white">{poCount}</div>
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="text-[11px] font-medium text-slate-500">Purchase orders</div>
+          <div className="text-2xl font-semibold text-[#080E29]">{loading ? '—' : error ? '—' : poCount}</div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-2">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Procurement Spend</div>
-          <div className="text-2xl font-mono font-bold text-emerald-400">GHS {totalSpend.toFixed(2)}</div>
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <div className="text-[11px] font-medium text-slate-500">Purchase order value</div>
+          <div className="text-xl font-semibold text-[#080E29]">{loading || error ? '—' : `GHS ${totalSpend.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}</div>
         </div>
       </div>
 
       {/* Recent Orders Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-          <h2 className="text-sm font-semibold text-white">Recent Purchase Orders</h2>
-          <Link href="/procurement/purchase-orders" className="text-xs font-medium text-brand-orange hover:underline flex items-center gap-1">
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
+          <h2 className="text-sm font-semibold text-[#080E29]">Recent purchase orders</h2>
+          <Link href="/procurement/purchase-orders" className="flex items-center gap-1 text-xs font-medium text-[#D94D00] hover:underline">
             View All <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-slate-400 text-sm">Loading procurement data...</div>
+          <div className="p-8 text-center text-sm text-slate-500">Loading procurement data…</div>
+        ) : error ? (
+          <div className="p-8 text-center text-xs text-slate-500">Recent purchase orders are unavailable because the request failed.</div>
         ) : recentOrders.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-sm">No purchase orders created yet.</div>
+          <div className="p-8 text-center text-sm text-slate-500">No purchase orders created yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-800 font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/50">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   <th className="p-3.5">PO Number</th>
                   <th className="p-3.5">Vendor</th>
                   <th className="p-3.5">Order Date</th>
@@ -116,15 +135,15 @@ export default function ProcurementDashboardPage() {
                   <th className="p-3.5">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {recentOrders.map((po) => (
-                  <tr key={po.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-medium text-brand-orange">{po.poNumber}</td>
-                    <td className="p-3.5 font-medium text-white">{po.vendor?.registeredName}</td>
-                    <td className="p-3.5 text-slate-400">{new Date(po.createdAt).toLocaleDateString()}</td>
-                    <td className="p-3.5 font-mono font-bold text-emerald-400">GHS {po.totalAmount}</td>
+                  <tr key={po.id} className="transition-colors hover:bg-slate-50">
+                    <td className="p-3.5 font-mono font-medium text-[#D94D00]">{po.poNumber}</td>
+                    <td className="p-3.5 font-medium text-slate-800">{po.vendor?.registeredName}</td>
+                    <td className="p-3.5 text-slate-500">{new Date(po.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3.5 font-mono font-semibold text-slate-800">GHS {po.totalAmount}</td>
                     <td className="p-3.5">
-                      <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-slate-800 text-slate-300">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-700">
                         {po.status}
                       </span>
                     </td>

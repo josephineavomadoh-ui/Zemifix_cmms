@@ -1,10 +1,5 @@
-import { Shell } from '@/src/components/layout/Shell';
-import { AssetsView } from '@/src/components/assets/AssetsView';
+import { redirect } from 'next/navigation';
 
 export default function AssetsPage() {
-  return (
-    <Shell>
-      <AssetsView />
-    </Shell>
-  );
+  redirect('/dashboard/assets');
 }

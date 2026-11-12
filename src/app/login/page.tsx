@@ -15,6 +15,8 @@ import {
   KeyRound,
   ArrowLeft,
   Sparkles,
+  Wrench,
+  Building2,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -247,25 +249,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-[#F8FAFC] py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="flex justify-center mb-4">
-          <Logo variant="light" width={170} height={48} />
+    <div className="min-h-screen bg-[#F8FAFC] lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      <aside className="relative hidden min-h-screen flex-col justify-between overflow-hidden bg-[#080E29] px-12 py-10 text-white lg:flex xl:px-16">
+        <div className="pointer-events-none absolute -right-20 top-1/4 h-80 w-80 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -right-8 top-[34%] h-56 w-56 rounded-full border border-white/10" />
+        <Logo variant="dark" width={180} height={70} />
+        <div className="relative max-w-xl">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[#FF7A32]">ZemiFix CMMS</p>
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">
+            Maintenance operations, brought together.
+          </h1>
+          <p className="mt-5 max-w-lg text-sm leading-7 text-slate-300">
+            Manage assets, coordinate work orders and keep service teams aligned in one operational workspace.
+          </p>
+          <div className="mt-8 grid max-w-lg grid-cols-2 gap-3">
+            <div className="rounded-md border border-white/10 bg-white/[0.04] p-4">
+              <Wrench className="h-4 w-4 text-[#FF5B00]" />
+              <p className="mt-3 text-xs font-semibold">Maintenance teams</p>
+            </div>
+            <div className="rounded-md border border-white/10 bg-white/[0.04] p-4">
+              <Building2 className="h-4 w-4 text-[#FF5B00]" />
+              <p className="mt-3 text-xs font-semibold">Facilities & service</p>
+            </div>
+          </div>
         </div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-[#0B1336]">
+        <p className="text-[11px] text-slate-400">Secure access to your ZemiFix workspace</p>
+      </aside>
+
+      <main className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
+        <div className="w-full max-w-md">
+          <div className="mb-6 text-center">
+            <div className="mb-4 flex justify-center lg:hidden">
+              <Logo variant="light" width={180} height={70} />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-[#080E29]">
           {authState === 'credentials'
             ? 'Staff Authentication Portal'
             : 'Two-Factor Authentication'}
-        </h2>
-        <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
+            </h2>
+            <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-slate-500">
           {authState === 'credentials'
             ? 'Single-company enterprise CMMS deployment for facilities, manufacturing & contractor operations.'
             : 'Enter the 6-digit verification code sent to your registered device.'}
-        </p>
-      </div>
+            </p>
+          </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl rounded-2xl border border-slate-200/80 sm:px-10">
+          <div className="rounded-lg border border-slate-200 bg-white px-6 py-7 shadow-lg shadow-slate-900/5 sm:px-9 sm:py-9">
           {error && (
             <div className="mb-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800 animate-in fade-in">
               <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
@@ -471,8 +500,9 @@ export default function LoginPage() {
             </span>
             <span>Single-Company Architecture</span>
           </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
