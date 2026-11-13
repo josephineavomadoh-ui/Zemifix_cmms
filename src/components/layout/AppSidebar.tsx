@@ -301,19 +301,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                           aria-current={active ? 'page' : undefined}
                           className={`group relative flex min-h-[36px] items-center gap-3 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
                             active
-                              ? 'bg-white/[0.08] text-white'
-                              : 'text-slate-300 hover:bg-[#0B1336] hover:text-white'
+                              ? 'bg-[#FF5B00] text-white font-semibold shadow-md shadow-[#FF5B00]/25'
+                              : 'text-slate-300 hover:bg-white/[0.08] hover:text-white'
                           } ${collapsed ? 'justify-center px-0' : ''}`}
                         >
-                          {/* Active indicator stripe */}
-                          {active && (
-                            <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-[#FF5B00]" />
-                          )}
-
                           <Icon
                             aria-hidden="true"
                             className={`h-4 w-4 shrink-0 ${
-                              active ? 'text-[#FF5B00]' : 'text-slate-400 group-hover:text-white'
+                              active ? 'text-white' : 'text-slate-400 group-hover:text-white'
                             }`}
                           />
                           {!collapsed && <span className="truncate">{item.name}</span>}

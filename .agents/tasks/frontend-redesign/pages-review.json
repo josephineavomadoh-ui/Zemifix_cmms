@@ -1,0 +1,26 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "file": "src/app/work-orders/[id]/page.tsx",
+      "description": "Lines 123 and 152: 'Start Work' (OPEN→IN_PROGRESS) and 'Resume Work' (ON_HOLD→IN_PROGRESS) action buttons use bg-blue-600 hover:bg-blue-700. Blue is not in the ZemiFix palette. These are the primary workflow-trigger buttons on the highest-traffic page. Correction: replace with bg-[#FF5B00] hover:bg-[#F95700] (or bg-brand-orange hover:bg-brand-orangeAlt) to match every other primary action button in the application."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "src/app/finance/invoices/page.tsx",
+      "description": "Line 280: The 'Approve' invoice action button uses bg-blue-600 hover:bg-blue-700, which is outside the ZemiFix brand palette. Correction: use bg-[#FF5B00] hover:bg-[#F95700] consistent with all other primary action buttons."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "src/app/work-orders/page.tsx",
+      "description": "The loading state renders a plain-text paragraph and the empty state is an inline div rather than the design-system LoadingSkeleton and EmptyState components. All other redesigned list pages (inventory, customers, requests, contracts, quotes, sla, finance, vendors) use these components. The inconsistency is visible on the most-visited page. Correction: replace the plain-text loading div with <LoadingSkeleton rows={6} columns={7} /> and the inline empty div with <EmptyState icon={ClipboardList} title='...' description='...' action={{ label: 'New Work Order', onClick: ... }} />."
+    },
+    {
+      "severity": "LOW",
+      "file": "src/components/layout/AppShell.tsx",
+      "description": "Line 213: notificationCount={0} is hardcoded. The old TopNav integrated NotificationHub which polled /api/notifications for unread count. The new AppTopbar accepts a notificationCount prop and renders a badge, but AppShell always passes 0 so the bell badge never shows unread notifications. Correction: fetch unread notification count from /api/notifications (or restore NotificationHub) and pass the live count."
+    }
+  ],
+  "reviewDoc": "e:\\HP\\Downloads\\remix-zemifix-cmms\\.agents\\tasks\\frontend-redesign\\pages-review.md"
+}

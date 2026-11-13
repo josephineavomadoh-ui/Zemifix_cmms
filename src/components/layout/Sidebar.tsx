@@ -171,17 +171,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       aria-current={isActive ? 'page' : undefined}
                       className={`group relative flex min-h-9 items-center gap-3 rounded-md px-2.5 text-[12px] font-medium transition-colors ${
                         isActive
-                          ? 'bg-white/10 text-white'
+                          ? 'bg-[#FF5B00] text-white font-semibold shadow-md shadow-[#FF5B00]/25'
                           : 'text-slate-300 hover:bg-white/[0.07] hover:text-white'
                       }`}
                     >
-                      {isActive && (
-                        <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-[#FF5B00]" />
-                      )}
                       <Icon
                         aria-hidden="true"
                         className={`h-4 w-4 shrink-0 ${
-                          isActive ? 'text-[#FF5B00]' : 'text-slate-400 group-hover:text-white'
+                          isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'
                         }`}
                       />
                       {!collapsed && <span className="truncate">{item.name}</span>}

@@ -26,6 +26,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/src/lib/auth-context';
 import type { DashboardStatistics } from '@/src/lib/services/dashboardService';
+import { KpiCard } from './KpiCard';
 
 function formatCurrency(value: number, currency: string) {
   try {
@@ -106,46 +107,6 @@ function HorizontalBars({
   );
 }
 
-function MetricLink({
-  href,
-  label,
-  value,
-  detail,
-  icon: Icon,
-  tone,
-}: {
-  href: string;
-  label: string;
-  value: string | number;
-  detail: string;
-  icon: LucideIcon;
-  tone: 'navy' | 'orange' | 'emerald' | 'amber' | 'rose';
-}) {
-  const tones = {
-    navy: 'bg-slate-100 text-[#0B1336]',
-    orange: 'bg-orange-50 text-[#D94D00]',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-800',
-    rose: 'bg-rose-50 text-rose-700',
-  };
-
-  return (
-    <Link
-      href={href}
-      className="group min-w-0 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF5B00]"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-[11px] font-medium leading-snug text-slate-500">{label}</p>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${tones[tone]}`}>
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </span>
-      </div>
-      <p className="mt-3 truncate text-2xl font-semibold tracking-tight tabular-nums text-[#080E29]">{value}</p>
-      <p className="mt-2 truncate border-t border-slate-100 pt-2 text-[10px] text-slate-500">{detail}</p>
-    </Link>
-  );
-}
-
 function StatusBadge({ value }: { value: string }) {
   const normalized = value.toUpperCase();
   const tone = normalized === 'COMPLETED'
@@ -210,6 +171,24 @@ export const DashboardView: React.FC = () => {
       ]
     : [];
 
+  const woBarTotal = activeWorkOrders || 1;
+  const woInProgCount = stats ? stats.workOrders.assigned + stats.workOrders.inProgress : 0;
+  const woOpenPct = stats ? (stats.workOrders.open / woBarTotal) * 100 : 0;
+  const woInProgPct = stats ? (woInProgCount / woBarTotal) * 100 : 0;
+  const woOnHoldPct = stats ? (stats.workOrders.onHold / woBarTotal) * 100 : 0;
+
+  const overduePct = activeWorkOrders > 0 && stats
+    ? Math.round((stats.workOrders.overdue / activeWorkOrders) * 100)
+    : 0;
+
+  const lowStockPct = stats && stats.inventory.totalPartCount > 0
+    ? Math.round((stats.inventory.lowStockCount / stats.inventory.totalPartCount) * 100)
+    : 0;
+
+  const collectionRate = stats && stats.finance.totalInvoicedAmount > 0
+    ? Math.round((stats.finance.paidAmount / stats.finance.totalInvoicedAmount) * 100)
+    : 100;
+
   return (
     <div className="min-w-0 space-y-5 pb-8">
       <section className="relative overflow-hidden rounded-lg bg-[#080E29] px-5 py-5 text-white sm:px-7 sm:py-6">
@@ -272,21 +251,167 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
-      <section aria-label="Operational metrics" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Operational metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {loading && !stats ? (
           Array.from({ length: 8 }, (_, index) => (
-            <div key={index} className="h-32 animate-pulse rounded-lg border border-slate-200 bg-white" />
+            <div key={index} className="h-48 animate-pulse rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-24 rounded bg-slate-100" />
+                <div className="h-8 w-8 rounded-lg bg-slate-100" />
+              </div>
+              <div className="h-7 w-16 rounded bg-slate-100" />
+              <div className="h-2 w-full rounded bg-slate-100" />
+              <div className="h-3 w-32 rounded bg-slate-100" />
+            </div>
           ))
         ) : stats ? (
           <>
-            <MetricLink href="/work-orders" label="Active work orders" value={activeWorkOrders} detail={`${stats.workOrders.total} total records`} icon={ClipboardList} tone="navy" />
-            <MetricLink href="/work-orders" label="Overdue work orders" value={stats.workOrders.overdue} detail="Past planned completion" icon={AlertCircle} tone={stats.workOrders.overdue ? 'rose' : 'emerald'} />
-            <MetricLink href="/requests" label="Pending service requests" value={stats.workOrders.pendingRequests} detail="Awaiting review" icon={Activity} tone={stats.workOrders.pendingRequests ? 'amber' : 'navy'} />
-            <MetricLink href="/assets" label="Asset availability" value={`${stats.assets.availabilityPercentage}%`} detail={`${stats.assets.operational} operational of ${stats.assets.total}`} icon={Gauge} tone="emerald" />
-            <MetricLink href="/inventory" label="Low-stock parts" value={stats.inventory.lowStockCount} detail={`${stats.inventory.totalPartCount} active parts`} icon={PackageSearch} tone={stats.inventory.lowStockCount ? 'amber' : 'navy'} />
-            <MetricLink href="/sla/breaches" label="SLA breaches" value={stats.slaAndContracts.slaBreachCount} detail="Recorded breach events" icon={ShieldAlert} tone={stats.slaAndContracts.slaBreachCount ? 'rose' : 'emerald'} />
-            <MetricLink href="/finance/invoices" label="Outstanding receivables" value={formatCurrency(stats.finance.outstandingReceivables, currency)} detail="Open invoice balances" icon={CircleDollarSign} tone="orange" />
-            <MetricLink href="/contracts" label="Active contracts" value={stats.slaAndContracts.activeContracts} detail="Currently active" icon={Handshake} tone="navy" />
+            <KpiCard
+              category="EXECUTION PIPELINE"
+              title="Active Work Orders"
+              href="/work-orders"
+              icon={ClipboardList}
+              tone="navy"
+              value={activeWorkOrders}
+              badgeText={`across ${stats.workOrders.total} total`}
+              subDetail={`${stats.workOrders.open} Open · ${woInProgCount} In-Progress · ${stats.workOrders.onHold} On Hold`}
+              progressBar={{
+                type: 'segmented',
+                segments: [
+                  { label: 'Open', count: stats.workOrders.open, value: woOpenPct, color: 'bg-[#FF5B00]' },
+                  { label: 'In-Prog', count: woInProgCount, value: woInProgPct, color: 'bg-blue-500' },
+                  { label: 'On Hold', count: stats.workOrders.onHold, value: woOnHoldPct, color: 'bg-amber-500' },
+                ],
+              }}
+              footerText={`${stats.workOrders.completed} completed work orders`}
+              footerTrend="up"
+            />
+
+            <KpiCard
+              category="WORK ORDER COMPLIANCE"
+              title="Overdue Work Orders"
+              href="/work-orders"
+              icon={AlertCircle}
+              tone={stats.workOrders.overdue > 0 ? 'rose' : 'emerald'}
+              value={stats.workOrders.overdue}
+              badgeText={`${overduePct}% of active`}
+              subDetail="Past planned completion date"
+              progressBar={{
+                type: 'single',
+                value: overduePct,
+                color: stats.workOrders.overdue > 0 ? 'bg-rose-500' : 'bg-emerald-500',
+              }}
+              footerText={stats.workOrders.overdue > 0 ? 'Requires dispatch & resolution' : 'All active orders on schedule'}
+              footerTrend={stats.workOrders.overdue > 0 ? 'down' : 'check'}
+            />
+
+            <KpiCard
+              category="TRIAGE & ESCALATION"
+              title="Pending Service Requests"
+              href="/requests"
+              icon={Activity}
+              tone={stats.workOrders.pendingRequests > 0 ? 'amber' : 'navy'}
+              value={stats.workOrders.pendingRequests}
+              badgeText="Awaiting review"
+              subDetail={stats.workOrders.pendingRequests > 0 ? `${stats.workOrders.pendingRequests} request(s) awaiting triage` : 'Zero pending requests'}
+              progressBar={{
+                type: 'single',
+                value: stats.workOrders.pendingRequests > 0 ? Math.min(stats.workOrders.pendingRequests * 25, 100) : 0,
+                color: stats.workOrders.pendingRequests > 0 ? 'bg-amber-500' : 'bg-slate-200',
+              }}
+              footerText="Triage & escalation queue"
+              footerTrend={stats.workOrders.pendingRequests > 0 ? 'up' : 'check'}
+            />
+
+            <KpiCard
+              category="FLEET & PLANT REGISTER"
+              title="Asset Availability"
+              href="/assets"
+              icon={Gauge}
+              tone="emerald"
+              value={`${stats.assets.availabilityPercentage}%`}
+              badgeText="in service"
+              subDetail={`${stats.assets.operational} Operational · ${stats.assets.inMaintenance} Maintenance · ${stats.assets.down} Down`}
+              progressBar={{
+                type: 'single',
+                value: stats.assets.availabilityPercentage,
+                color: stats.assets.availabilityPercentage >= 90 ? 'bg-emerald-500' : stats.assets.availabilityPercentage >= 75 ? 'bg-amber-500' : 'bg-rose-500',
+              }}
+              footerText={stats.assets.down > 0 ? `${stats.assets.down} asset(s) currently down` : `${stats.assets.operational} operational of ${stats.assets.total} registered`}
+              footerTrend={stats.assets.down > 0 ? 'down' : 'up'}
+            />
+
+            <KpiCard
+              category="SUPPLY & INVENTORY"
+              title="Low-Stock Parts"
+              href="/inventory"
+              icon={PackageSearch}
+              tone={stats.inventory.lowStockCount > 0 ? 'amber' : 'navy'}
+              value={stats.inventory.lowStockCount}
+              badgeText={`${lowStockPct}% low stock`}
+              subDetail={`${stats.inventory.lowStockCount} below reorder level of ${stats.inventory.totalPartCount} active parts`}
+              progressBar={{
+                type: 'single',
+                value: lowStockPct,
+                color: stats.inventory.lowStockCount > 0 ? 'bg-amber-500' : 'bg-emerald-500',
+              }}
+              footerText={`${stats.procurement.pendingRequisitions} pending purchase requisition(s)`}
+              footerTrend={stats.inventory.lowStockCount > 0 ? 'down' : 'check'}
+            />
+
+            <KpiCard
+              category="RELIABILITY & HEALTH"
+              title="SLA Breaches"
+              href="/sla/breaches"
+              icon={ShieldAlert}
+              tone={stats.slaAndContracts.slaBreachCount > 0 ? 'rose' : 'emerald'}
+              value={stats.slaAndContracts.slaBreachCount}
+              badgeText="Target: 0"
+              subDetail={stats.slaAndContracts.slaBreachCount === 0 ? '100% SLA compliance maintained' : `${stats.slaAndContracts.slaBreachCount} breach event(s) recorded`}
+              progressBar={{
+                type: 'single',
+                value: stats.slaAndContracts.slaBreachCount === 0 ? 100 : Math.max(100 - stats.slaAndContracts.slaBreachCount * 15, 10),
+                color: stats.slaAndContracts.slaBreachCount > 0 ? 'bg-rose-500' : 'bg-emerald-500',
+              }}
+              footerText={stats.slaAndContracts.slaBreachCount > 0 ? 'Requires review & remediation' : 'Zero SLA breach events recorded'}
+              footerTrend={stats.slaAndContracts.slaBreachCount > 0 ? 'down' : 'check'}
+            />
+
+            <KpiCard
+              category="EXPENDITURE & PACING"
+              title="Outstanding Receivables"
+              href="/finance/invoices"
+              icon={CircleDollarSign}
+              tone="orange"
+              value={formatCurrency(stats.finance.outstandingReceivables, currency)}
+              badgeText={`${collectionRate}% collected`}
+              subDetail={`${formatCurrency(stats.finance.paidAmount, currency)} paid of ${formatCurrency(stats.finance.totalInvoicedAmount, currency)} invoiced`}
+              progressBar={{
+                type: 'single',
+                value: collectionRate,
+                color: 'bg-[#FF5B00]',
+              }}
+              footerText="Open invoice balances & collections"
+              footerTrend="up"
+            />
+
+            <KpiCard
+              category="BUSINESS & CONTRACTS"
+              title="Active Contracts"
+              href="/contracts"
+              icon={Handshake}
+              tone="navy"
+              value={stats.slaAndContracts.activeContracts}
+              badgeText="Currently active"
+              subDetail={`${stats.slaAndContracts.activeContracts} customer contract(s) in force`}
+              progressBar={{
+                type: 'single',
+                value: stats.slaAndContracts.activeContracts > 0 ? 100 : 0,
+                color: 'bg-[#0B1336]',
+              }}
+              footerText="Active customer agreement coverage"
+              footerTrend="check"
+            />
           </>
         ) : (
           <div className="col-span-full rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
